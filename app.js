@@ -41,33 +41,60 @@ class SalesAgentApp {
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
 
-        // Config will be set after auto-detection
-        this.config = {
-            apiUrl: null,
-            wsUrl: null
-        };
-        
-        console.log('SalesAgentApp initialized - config will be auto-detected');
-    }
-
-    async init() {
-        // Auto-detect backend configuration
-        const configured = await window.appConfig.ensureConfigured();
-        if (!configured) {
-            alert('Failed to connect to backend. Please check your backend is running and accessible.');
-            return;
-        }
-        
-        // Update our config
+        // Config will be set after initialization
         this.config = {
             apiUrl: window.appConfig.apiUrl,
             wsUrl: window.appConfig.wsUrl
         };
         
-        console.log('Backend auto-detected:', this.config);
+        console.log('SalesAgentApp initialized with config:', this.config);
+    }
+
+    async init() {
+        // Show a loading message
+        console.log('Initializing MARK Sales Agent...');
+        
+        // Ensure backend configuration is working
+        const configured = await window.appConfig.ensureConfigured();
+        if (!configured) {
+            // Instead of alert, show a nicer error message on the page
+            this.showConnectionError();
+            return;
+        }
+        
+        // Update our config with verified values
+        this.config = {
+            apiUrl: window.appConfig.apiUrl,
+            wsUrl: window.appConfig.wsUrl
+        };
+        
+        console.log('Backend verified and configured:', this.config);
         
         this.setupEventListeners();
         this.initializeClientVAD();
+        this.showLogin();
+    }
+
+    showConnectionError() {
+        // Show connection error on the login screen
+        const loginScreen = document.getElementById('loginScreen');
+        const existingError = document.getElementById('connectionError');
+        
+        if (!existingError) {
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'connectionError';
+            errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg z-50';
+            errorDiv.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Backend connection failed. Please check settings.</span>
+                    <button onclick="location.reload()" class="ml-2 underline">Retry</button>
+                </div>
+            `;
+            document.body.appendChild(errorDiv);
+        }
+        
+        // Still show login form but with a settings option
         this.showLogin();
     }
 
@@ -189,6 +216,9 @@ class SalesAgentApp {
         // Settings modal event listeners
         document.addEventListener('click', (e) => {
             if (e.target.id === 'settingsBtn' || e.target.closest('#settingsBtn')) {
+                this.showSettings();
+            }
+            if (e.target.id === 'loginSettingsBtn' || e.target.closest('#loginSettingsBtn')) {
                 this.showSettings();
             }
             if (e.target.id === 'closeSettings') {
@@ -336,6 +366,10 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${url}/config`, { 
                 method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 timeout: 5000 
             });
             

@@ -9,117 +9,117 @@ class Config {
         if (this.isDevelopment) {
             this.apiUrl = 'http://localhost:8000';
             this.wsUrl = 'ws://localhost:8000';
+            this.isConfigured = true;
         } else {
-            // In production, we'll auto-detect the backend URL
-            this.apiUrl = null;
-            this.wsUrl = null;
+            // In production, try to get from localStorage first, then use default
+            const savedUrl = localStorage.getItem('backend_url');
+            if (savedUrl) {
+                this.apiUrl = savedUrl;
+                this.wsUrl = savedUrl.replace('http', 'ws');
+                this.isConfigured = false; // Still need to verify
+            } else {
+                // Use the current ngrok URL as default
+                this.apiUrl = 'https://48172acdb676.ngrok-free.app';
+                this.wsUrl = 'wss://48172acdb676.ngrok-free.app';
+                this.isConfigured = false; // Need to verify
+            }
         }
-        
-        this.isConfigured = this.isDevelopment; // Auto-configured in dev
         
         console.log('Config initialized:', {
             isDevelopment: this.isDevelopment,
+            apiUrl: this.apiUrl,
+            wsUrl: this.wsUrl,
             isConfigured: this.isConfigured
         });
     }
     
-    async autoDetectBackendUrl() {
-        if (this.isDevelopment) {
-            return true; // Already configured for development
-        }
-        
-        // Try to get backend URL from various sources
-        const possibleUrls = [
-            // Check if there's a saved URL from before
-            localStorage.getItem('backend_url'),
-            // Try common ngrok patterns
-            this.tryNgrokUrls()
-        ].filter(Boolean);
-        
-        for (const baseUrl of possibleUrls) {
-            try {
-                const response = await fetch(`${baseUrl}/config`, {
-                    method: 'GET',
-                    timeout: 5000
-                });
+    async verifyConnection() {
+        try {
+            const response = await fetch(`${this.apiUrl}/config`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                timeout: 5000
+            });
+            
+            if (response.ok) {
+                const config = await response.json();
+                console.log('Backend config verified:', config);
                 
-                if (response.ok) {
-                    const config = await response.json();
-                    this.updateConfig(config.backend_url, config.websocket_url);
-                    return true;
-                }
-            } catch (error) {
-                console.log(`Failed to connect to ${baseUrl}:`, error);
+                // Update URLs from backend response
+                this.apiUrl = config.backend_url;
+                this.wsUrl = config.websocket_url;
+                this.isConfigured = true;
+                
+                // Save for future use
+                localStorage.setItem('backend_url', this.apiUrl);
+                
+                return true;
             }
+        } catch (error) {
+            console.log('Connection verification failed:', error);
         }
-        
-        return false; // Auto-detection failed
-    }
-    
-    tryNgrokUrls() {
-        // This is a fallback - in real deployment, you'd set this properly
-        const possibleNgrokUrls = [
-            'https://1a3c0eb5d829.ngrok-free.app',
-            // Add more if needed
-        ];
-        return possibleNgrokUrls;
-    }
-    
-    updateConfig(apiUrl, wsUrl) {
-        this.apiUrl = apiUrl;
-        this.wsUrl = wsUrl || apiUrl.replace('http', 'ws');
-        this.isConfigured = true;
-        
-        // Save for next time
-        localStorage.setItem('backend_url', apiUrl);
-        
-        console.log('Config updated:', {
-            apiUrl: this.apiUrl,
-            wsUrl: this.wsUrl
-        });
+        return false;
     }
     
     async ensureConfigured() {
-        if (this.isConfigured) {
+        // Always try to verify current config first (no prompting)
+        const verified = await this.verifyConnection();
+        if (verified) {
             return true;
         }
         
-        const autoDetected = await this.autoDetectBackendUrl();
-        if (!autoDetected) {
-            // Fallback to user input
-            const userUrl = prompt('Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
-            if (userUrl) {
-                try {
-                    const response = await fetch(`${userUrl}/config`);
-                    if (response.ok) {
-                        const config = await response.json();
-                        this.updateConfig(config.backend_url, config.websocket_url);
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('Failed to validate user URL:', error);
+        // If verification failed and we're in production, try a few common patterns silently
+        if (!this.isDevelopment) {
+            const fallbackUrls = [
+                'https://48172acdb676.ngrok-free.app', // Current ngrok URL
+                localStorage.getItem('backend_url')
+            ].filter(Boolean);
+            
+            for (const url of fallbackUrls) {
+                this.apiUrl = url;
+                this.wsUrl = url.replace('http', 'ws');
+                
+                const verified = await this.verifyConnection();
+                if (verified) {
+                    return true;
                 }
             }
-            return false;
         }
         
-        return true;
+        // Only prompt as last resort if all automatic attempts fail
+        const userUrl = prompt('Backend connection failed. Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
+        if (userUrl && userUrl.startsWith('http')) {
+            this.apiUrl = userUrl;
+            this.wsUrl = userUrl.replace('http', 'ws');
+            
+            // Try to verify the user-provided URL
+            const verified = await this.verifyConnection();
+            if (verified) {
+                return true;
+            } else {
+                alert('Failed to connect to the provided URL. Please check the URL and try again.');
+            }
+        }
+        
+        return false;
     }
     
     // Method to manually set URL (for admin panel)
     async setBackendUrl(url) {
-        try {
-            const response = await fetch(`${url}/config`);
-            if (response.ok) {
-                const config = await response.json();
-                this.updateConfig(config.backend_url, config.websocket_url);
-                location.reload();
-                return true;
-            }
-        } catch (error) {
-            console.error('Failed to set backend URL:', error);
+        this.apiUrl = url;
+        this.wsUrl = url.replace('http', 'ws');
+        
+        const verified = await this.verifyConnection();
+        if (verified) {
+            alert('Backend URL updated successfully!');
+            return true;
+        } else {
+            alert('Failed to connect to the provided URL. Please check the URL and try again.');
+            return false;
         }
-        return false;
     }
 }
 
