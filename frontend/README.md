@@ -1,4 +1,37 @@
-# Lisa AI Sales Agent Frontend
+# MARK Sales Agent - Frontend
+
+AI-Powered Sales Agent Frontend built with Vanilla JavaScript and deployed on Vercel.
+
+## 🚀 Features
+
+- Real-time voice conversation with AI sales agent
+- Voice Activity Detection (VAD)
+- WebSocket-based real-time communication
+- Modern responsive UI with Tailwind CSS
+- Easy backend URL configuration
+- Production-ready deployment
+
+## 🛠 Tech Stack
+
+- **Frontend**: Vanilla JavaScript, HTML5, CSS3
+- **Styling**: Tailwind CSS
+- **Audio**: Web Audio API, WebRTC VAD
+- **Real-time**: WebSocket
+- **Deployment**: Vercel
+
+## 🔧 Configuration
+
+The app automatically detects if you're running locally or in production:
+
+- **Local Development**: Uses `http://localhost:8000`
+- **Production**: Prompts for ngrok URL or uses settings panel
+
+## 🎯 Usage
+
+1. Visit the deployed application
+2. Enter your ngrok backend URL when prompted
+3. Login with demo credentials: `ahmed / Ra12613a`
+4. Start talking to the AI sales agent!
 
 ## Deployment on Vercel
 

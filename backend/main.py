@@ -48,6 +48,7 @@ app.add_middleware(
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")  # Add AssemblyAI API key
+NGROK_URL = os.getenv("NGROK_URL", "https://48172acdb676.ngrok-free.app")  # Current ngrok URL
 GOOGLE_CRED_JSON = os.getenv("GOOGLE_CRED_JSON", os.path.join(os.path.dirname(__file__), "Google_Credentials.json"))
 CONVERSATION_SCRIPT_PATH = os.getenv("CONVERSATION_SCRIPT_PATH", os.path.join(os.path.dirname(__file__), "conversation_script.txt"))
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -1418,6 +1419,26 @@ async def end_call(websocket: WebSocket, session: dict, feedback: str, customer_
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/config")
+async def get_config():
+    """Get frontend configuration including backend URL"""
+    return {
+        "backend_url": NGROK_URL,
+        "websocket_url": NGROK_URL.replace("https://", "wss://").replace("http://", "ws://"),
+        "status": "ready"
+    }
+
+@app.post("/config/ngrok")
+async def update_ngrok_url(url_data: dict):
+    """Update the ngrok URL - for easy backend management"""
+    global NGROK_URL
+    new_url = url_data.get("url", "").strip()
+    if new_url and (new_url.startswith("https://") or new_url.startswith("http://")):
+        NGROK_URL = new_url
+        return {"status": "success", "new_url": NGROK_URL}
+    else:
+        return {"status": "error", "message": "Invalid URL format"}
 
 def update_stt_config(**config_updates):
     """
