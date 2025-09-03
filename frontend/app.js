@@ -281,7 +281,10 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${this.config.apiUrl}/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 body: JSON.stringify({ username, password })
             });
             
@@ -1104,7 +1107,8 @@ class SalesAgentApp {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`
+                    'Authorization': `Bearer ${this.token}`,
+                    'ngrok-skip-browser-warning': 'true'
                 },
                 body: JSON.stringify({
                     session_id: this.sessionId,
