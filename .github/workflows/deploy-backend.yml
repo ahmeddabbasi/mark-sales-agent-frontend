@@ -1,0 +1,47 @@
+name: Deploy Backend to Ubuntu Server
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Deploy to server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          # Navigate to project directory
+          cd /var/www/lisa-sales-agent
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Activate virtual environment and install dependencies
+          source venv/bin/activate
+          pip install -r requirements.txt
+          
+          # Restart the service
+          sudo supervisorctl restart lisa-sales-agent
+          
+          # Check service status
+          sudo supervisorctl status lisa-sales-agent
+        EOF
+        
+    - name: Verify deployment
+      run: |
+        sleep 10
+        curl -f http://${{ secrets.SSH_HOST }}/health || exit 1
