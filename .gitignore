@@ -1,0 +1,45 @@
+# Logs
+*.log
+frontend_server.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+
+# Vercel
+.vercel/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+
+# Backup files
+*.backup
+*.backup2
+
+# Development files
+server.py
+start_server.sh
+
+# Vercel
+.vercel

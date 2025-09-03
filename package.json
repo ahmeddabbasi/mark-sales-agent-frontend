@@ -1,0 +1,17 @@
+{
+  "name": "mark-sales-agent-frontend",
+  "version": "1.0.0",
+  "description": "MARK AI Sales Agent Frontend",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 server.py",
+    "build": "echo 'Static files ready'",
+    "start": "python3 server.py"
+  },
+  "dependencies": {
+    "onnxruntime-web": "^1.19.0"
+  },
+  "keywords": ["ai", "sales", "agent", "vosk", "openai", "vad", "silero"],
+  "author": "Your Name",
+  "license": "MIT"
+}
