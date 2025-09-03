@@ -41,15 +41,31 @@ class SalesAgentApp {
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
 
+        // Config will be set after auto-detection
+        this.config = {
+            apiUrl: null,
+            wsUrl: null
+        };
+        
+        console.log('SalesAgentApp initialized - config will be auto-detected');
+    }
+
+    async init() {
+        // Auto-detect backend configuration
+        const configured = await window.appConfig.ensureConfigured();
+        if (!configured) {
+            alert('Failed to connect to backend. Please check your backend is running and accessible.');
+            return;
+        }
+        
+        // Update our config
         this.config = {
             apiUrl: window.appConfig.apiUrl,
             wsUrl: window.appConfig.wsUrl
         };
         
-        console.log('SalesAgentApp initialized with config:', this.config);
-    }
-
-    init() {
+        console.log('Backend auto-detected:', this.config);
+        
         this.setupEventListeners();
         this.initializeClientVAD();
         this.showLogin();
@@ -274,7 +290,7 @@ class SalesAgentApp {
     showSettings() {
         const modal = document.getElementById('settingsModal');
         const urlInput = document.getElementById('backendUrl');
-        const currentUrl = localStorage.getItem('ngrok_url') || window.appConfig.ngrokUrl;
+        const currentUrl = window.appConfig.apiUrl || localStorage.getItem('backend_url') || '';
         
         urlInput.value = currentUrl;
         modal.classList.remove('hidden');
@@ -284,10 +300,19 @@ class SalesAgentApp {
         document.getElementById('settingsModal').classList.add('hidden');
     }
 
-    saveSettings() {
+    async saveSettings() {
         const url = document.getElementById('backendUrl').value.trim();
         if (url && url.startsWith('http')) {
-            window.appConfig.setBackendUrl(url);
+            const success = await window.appConfig.setBackendUrl(url);
+            if (success) {
+                // Update our local config
+                this.config.apiUrl = window.appConfig.apiUrl;
+                this.config.wsUrl = window.appConfig.wsUrl;
+                alert('Backend URL updated successfully!');
+                this.hideSettings();
+            } else {
+                alert('Failed to connect to the provided URL. Please check the URL and try again.');
+            }
         } else {
             alert('Please enter a valid URL starting with http:// or https://');
         }
@@ -309,21 +334,22 @@ class SalesAgentApp {
         testDiv.classList.remove('hidden');
 
         try {
-            const response = await fetch(`${url}/health`, { 
+            const response = await fetch(`${url}/config`, { 
                 method: 'GET',
                 timeout: 5000 
             });
             
             if (response.ok) {
+                const config = await response.json();
                 testDiv.className = 'text-center text-sm text-green-300';
-                testDiv.textContent = '✅ Connection successful!';
+                testDiv.textContent = `✅ Connection successful! Backend: ${config.backend_url}`;
             } else {
                 testDiv.className = 'text-center text-sm text-red-300';
                 testDiv.textContent = '❌ Server responded with error';
             }
         } catch (error) {
             testDiv.className = 'text-center text-sm text-red-300';
-            testDiv.textContent = '❌ Connection failed';
+            testDiv.textContent = '❌ Connection failed - check URL and backend status';
         }
     }
 
