@@ -30,7 +30,7 @@ The app automatically detects if you're running locally or in production:
 
 1. Visit the deployed application
 2. Enter your ngrok backend URL when prompted
-3. Login with demo credentials: `ahmed / Ra12613a`
+3. Login with credentials
 4. Start talking to the AI sales agent!
 
 ## Deployment on Vercel
