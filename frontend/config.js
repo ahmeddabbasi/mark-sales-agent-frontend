@@ -19,8 +19,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current tunnel URL as default
-                this.apiUrl = 'https://marksales.loca.lt';
-                this.wsUrl = 'wss://marksales.loca.lt';
+                this.apiUrl = 'https://61998bca0380717425730ee490a70e06.serveo.net';
+                this.wsUrl = 'wss://61998bca0380717425730ee490a70e06.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
@@ -65,8 +65,17 @@ class Config {
     }
     
     async ensureConfigured() {
-        // If we're in development or have a hardcoded ngrok URL, skip verification popup
+        // If we're in development or have a hardcoded tunnel URL, skip verification popup
         if (this.isConfigured) {
+            return true;
+        }
+        
+        // For hardcoded tunnel URLs (ngrok, serveo, loca.lt), skip verification and accept directly
+        if (this.apiUrl.includes('ngrok-free.app') || 
+            this.apiUrl.includes('serveo.net') || 
+            this.apiUrl.includes('loca.lt')) {
+            console.log('Using hardcoded tunnel URL, skipping verification:', this.apiUrl);
+            this.isConfigured = true;
             return true;
         }
         
@@ -79,7 +88,7 @@ class Config {
         // If verification failed and we're in production, try a few common patterns silently
         if (!this.isDevelopment) {
             const fallbackUrls = [
-                'https://marksales.loca.lt', // Current tunnel URL
+                'https://61998bca0380717425730ee490a70e06.serveo.net', // Current tunnel URL
                 localStorage.getItem('backend_url')
             ].filter(Boolean);
             
@@ -95,7 +104,9 @@ class Config {
         }
         
         // Only prompt as last resort if all automatic attempts fail AND we don't have hardcoded URL
-        if (!this.apiUrl.includes('ngrok-free.app')) {
+        if (!this.apiUrl.includes('ngrok-free.app') && 
+            !this.apiUrl.includes('serveo.net') && 
+            !this.apiUrl.includes('loca.lt')) {
             const userUrl = prompt('Backend connection failed. Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
             if (userUrl && userUrl.startsWith('http')) {
                 this.apiUrl = userUrl;
@@ -111,8 +122,10 @@ class Config {
             }
         }
         
-        // If we have a hardcoded ngrok URL, just proceed without popup
-        return this.apiUrl.includes('ngrok-free.app');
+        // If we have a hardcoded tunnel URL, just proceed without popup
+        return (this.apiUrl.includes('ngrok-free.app') || 
+                this.apiUrl.includes('serveo.net') || 
+                this.apiUrl.includes('loca.lt'));
     }
     
     // Method to manually set URL (for admin panel)
