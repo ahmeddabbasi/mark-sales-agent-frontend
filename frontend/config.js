@@ -19,8 +19,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current ngrok URL as default
-                this.apiUrl = 'https://b9cf343bedf1.ngrok-free.app';
-                this.wsUrl = 'wss://b9cf343bedf1.ngrok-free.app';
+                this.apiUrl = 'https://a8fa6258eec2.ngrok-free.app';
+                this.wsUrl = 'wss://a8fa6258eec2.ngrok-free.app';
                 this.isConfigured = true; // Auto-configured with hardcoded ngrok URL
             }
         }
@@ -79,7 +79,7 @@ class Config {
         // If verification failed and we're in production, try a few common patterns silently
         if (!this.isDevelopment) {
             const fallbackUrls = [
-                'https://b9cf343bedf1.ngrok-free.app', // Current ngrok URL
+                'https://a8fa6258eec2.ngrok-free.app', // Current ngrok URL
                 localStorage.getItem('backend_url')
             ].filter(Boolean);
             
