@@ -171,7 +171,7 @@ class SalesAgentApp {
     }
 
     handleVADSpeechStart(speechProb) {
-        // IMMEDIATE BARGE-IN: If AI is speaking and user starts speaking, interrupt immediately
+        // ECHO PROTECTION: If AI is speaking, temporarily disable barge-in to prevent feedback
         if (this.isAiSpeaking && this.vadEnabled) {
             const now = Date.now();
             
@@ -180,11 +180,25 @@ class SalesAgentApp {
                 return;
             }
             
+            // ENHANCED PROTECTION: Only allow barge-in if speech probability is very high
+            // This helps distinguish real user speech from AI audio feedback
+            const highConfidenceThreshold = 0.85; // Much higher threshold during AI speech
+            if (speechProb < highConfidenceThreshold) {
+                console.log(`� Ignoring low-confidence speech (${speechProb.toFixed(2)}) during AI playback`);
+                return;
+            }
+            
+            // Additional protection: Check if we just started AI audio (likely feedback)
+            const timeSinceAudioStart = now - this.lastAudioStartTime;
+            if (timeSinceAudioStart < 500) { // 500ms protection window
+                console.log(`🔇 Ignoring speech detection too close to AI audio start (${timeSinceAudioStart}ms)`);
+                return;
+            }
+            
             this.lastInterruptTime = now;
             
-            console.log('🚨 CONFIRMED BARGE-IN: Sending interrupt signal to server...');
+            console.log(`🚨 HIGH-CONFIDENCE BARGE-IN: Speech prob ${speechProb.toFixed(2)}, sending interrupt...`);
             
-            // Audio is already stopped by onVADUpdate - just send interrupt signal
             // Send interrupt signal to server for state cleanup
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 this.socket.send(JSON.stringify({ 
@@ -267,7 +281,10 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${this.config.apiUrl}/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 body: JSON.stringify({ username, password })
             });
             
@@ -1090,7 +1107,8 @@ class SalesAgentApp {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`
+                    'Authorization': `Bearer ${this.token}`,
+                    'ngrok-skip-browser-warning': 'true'
                 },
                 body: JSON.stringify({
                     session_id: this.sessionId,

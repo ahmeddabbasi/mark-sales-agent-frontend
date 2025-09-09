@@ -18,10 +18,10 @@ class Config {
                 this.wsUrl = savedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                // Use the current ngrok URL as default
-                this.apiUrl = 'https://48172acdb676.ngrok-free.app';
-                this.wsUrl = 'wss://48172acdb676.ngrok-free.app';
-                this.isConfigured = false; // Need to verify
+                // Use the current tunnel URL as default
+                this.apiUrl = 'https://61998bca0380717425730ee490a70e06.serveo.net';
+                this.wsUrl = 'wss://61998bca0380717425730ee490a70e06.serveo.net';
+                this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
         
@@ -65,6 +65,20 @@ class Config {
     }
     
     async ensureConfigured() {
+        // If we're in development or have a hardcoded tunnel URL, skip verification popup
+        if (this.isConfigured) {
+            return true;
+        }
+        
+        // For hardcoded tunnel URLs (ngrok, serveo, loca.lt), skip verification and accept directly
+        if (this.apiUrl.includes('ngrok-free.app') || 
+            this.apiUrl.includes('serveo.net') || 
+            this.apiUrl.includes('loca.lt')) {
+            console.log('Using hardcoded tunnel URL, skipping verification:', this.apiUrl);
+            this.isConfigured = true;
+            return true;
+        }
+        
         // Always try to verify current config first (no prompting)
         const verified = await this.verifyConnection();
         if (verified) {
@@ -74,7 +88,7 @@ class Config {
         // If verification failed and we're in production, try a few common patterns silently
         if (!this.isDevelopment) {
             const fallbackUrls = [
-                'https://48172acdb676.ngrok-free.app', // Current ngrok URL
+                'https://61998bca0380717425730ee490a70e06.serveo.net', // Current tunnel URL
                 localStorage.getItem('backend_url')
             ].filter(Boolean);
             
@@ -89,22 +103,29 @@ class Config {
             }
         }
         
-        // Only prompt as last resort if all automatic attempts fail
-        const userUrl = prompt('Backend connection failed. Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
-        if (userUrl && userUrl.startsWith('http')) {
-            this.apiUrl = userUrl;
-            this.wsUrl = userUrl.replace('http', 'ws');
-            
-            // Try to verify the user-provided URL
-            const verified = await this.verifyConnection();
-            if (verified) {
-                return true;
-            } else {
-                alert('Failed to connect to the provided URL. Please check the URL and try again.');
+        // Only prompt as last resort if all automatic attempts fail AND we don't have hardcoded URL
+        if (!this.apiUrl.includes('ngrok-free.app') && 
+            !this.apiUrl.includes('serveo.net') && 
+            !this.apiUrl.includes('loca.lt')) {
+            const userUrl = prompt('Backend connection failed. Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
+            if (userUrl && userUrl.startsWith('http')) {
+                this.apiUrl = userUrl;
+                this.wsUrl = userUrl.replace('http', 'ws');
+                
+                // Try to verify the user-provided URL
+                const verified = await this.verifyConnection();
+                if (verified) {
+                    return true;
+                } else {
+                    alert('Failed to connect to the provided URL. Please check the URL and try again.');
+                }
             }
         }
         
-        return false;
+        // If we have a hardcoded tunnel URL, just proceed without popup
+        return (this.apiUrl.includes('ngrok-free.app') || 
+                this.apiUrl.includes('serveo.net') || 
+                this.apiUrl.includes('loca.lt'));
     }
     
     // Method to manually set URL (for admin panel)
