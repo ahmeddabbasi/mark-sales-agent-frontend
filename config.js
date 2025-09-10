@@ -19,8 +19,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current tunnel URL as default
-                this.apiUrl = 'https://29aff22837ec07c16c5285e67999b323.serveo.net';
-                this.wsUrl = 'wss://29aff22837ec07c16c5285e67999b323.serveo.net';
+                this.apiUrl = 'https://9c6478d13edd0a7380e137074498ea23.serveo.net';
+                this.wsUrl = 'wss://9c6478d13edd0a7380e137074498ea23.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
