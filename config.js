@@ -11,11 +11,18 @@ class Config {
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-            // In production, try to get from localStorage first, then use default
+            // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl) {
-                this.apiUrl = savedUrl;
-                this.wsUrl = savedUrl.replace('http', 'ws');
+            if (savedUrl && !savedUrl.includes('9c6478d13edd0a7380e137074498ea23.serveo.net')) {
+                localStorage.removeItem('backend_url');
+                console.log('Cleared old backend URL from localStorage');
+            }
+            
+            // In production, try to get from localStorage first, then use default
+            const currentSavedUrl = localStorage.getItem('backend_url');
+            if (currentSavedUrl) {
+                this.apiUrl = currentSavedUrl;
+                this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current tunnel URL as default
