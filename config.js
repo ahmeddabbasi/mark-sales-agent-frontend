@@ -13,7 +13,7 @@ class Config {
         } else {
             // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('9c6478d13edd0a7380e137074498ea23.serveo.net')) {
+            if (savedUrl && !savedUrl.includes('vast-kiwis-notice.loca.lt')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -26,8 +26,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current tunnel URL as default
-                this.apiUrl = 'https://9c6478d13edd0a7380e137074498ea23.serveo.net';
-                this.wsUrl = 'wss://9c6478d13edd0a7380e137074498ea23.serveo.net';
+                this.apiUrl = 'https://vast-kiwis-notice.loca.lt';
+                this.wsUrl = 'wss://vast-kiwis-notice.loca.lt';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
