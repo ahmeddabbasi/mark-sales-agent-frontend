@@ -11,9 +11,9 @@ class Config {
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-            // Clear old URLs from localStorage to ensure we use the latest config
+                        // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('5048ec4561a824.lhr.life')) {
+            if (savedUrl && !savedUrl.includes('99addd1275365803ed2eb0224fcb26bd.serveo.net')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -26,8 +26,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the current tunnel URL as default
-                this.apiUrl = 'https://5048ec4561a824.lhr.life';
-                this.wsUrl = 'wss://5048ec4561a824.lhr.life';
+                this.apiUrl = 'https://99addd1275365803ed2eb0224fcb26bd.serveo.net';
+                this.wsUrl = 'wss://99addd1275365803ed2eb0224fcb26bd.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
