@@ -13,8 +13,8 @@ class SalesAgentApp {
         this.workletNode = null;
         this.audioBuffer = [];
         this.bufferDuration = 0;
-        this.maxBufferDuration = 80;   // Send every 80ms chunk for true real-time
-        this.minChunkSize = 1280;      // Minimum samples per chunk (80ms at 16kHz)
+        this.maxBufferDuration = 100;  // Send every 100ms chunk for AssemblyAI compliance
+        this.minChunkSize = 4800;      // Minimum samples per chunk (100ms at 48kHz, above AssemblyAI 50ms requirement)
         this.realTimeMode = true;      // Enable real-time continuous streaming
         this.isCallActive = false;
 
@@ -578,7 +578,7 @@ class SalesAgentApp {
             this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 16000
+                sampleRate: 48000
             });
             
             if (this.audioContext.state === 'suspended') {
@@ -727,7 +727,7 @@ class SalesAgentApp {
             data: base64Data,
             format: 'pcm16',
             chunk_size: audioData.length,
-            sample_rate: 16000,
+            sample_rate: 48000,  // Updated to match actual frontend sample rate
             timestamp: now
         }));
     }
