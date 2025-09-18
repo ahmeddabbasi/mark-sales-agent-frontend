@@ -207,7 +207,10 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${this.config.apiUrl}/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Bypass-Tunnel-Reminder': 'true'  // Required for localtunnel
+                },
                 body: JSON.stringify({ username, password })
             });
             
