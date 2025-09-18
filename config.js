@@ -13,7 +13,7 @@ class Config {
         } else {
                         // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('11880bc4a32b.ngrok-free.app')) {
+            if (savedUrl && !savedUrl.includes('tender-owls-sleep.loca.lt')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -25,9 +25,9 @@ class Config {
                 this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                // Use the current ngrok tunnel URL as default
-                this.apiUrl = 'https://11880bc4a32b.ngrok-free.app';
-                this.wsUrl = 'wss://11880bc4a32b.ngrok-free.app';
+                // Use the current localtunnel URL as default
+                this.apiUrl = 'https://tender-owls-sleep.loca.lt';
+                this.wsUrl = 'wss://tender-owls-sleep.loca.lt';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }

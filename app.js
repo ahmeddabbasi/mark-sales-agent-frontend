@@ -44,10 +44,10 @@ class SalesAgentApp {
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://11880bc4a32b.ngrok-free.app',
+                : 'https://tender-owls-sleep.loca.lt',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://11880bc4a32b.ngrok-free.app'
+                : 'wss://tender-owls-sleep.loca.lt'
         };
     }
 
