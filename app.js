@@ -13,8 +13,8 @@ class SalesAgentApp {
         this.workletNode = null;
         this.audioBuffer = [];
         this.bufferDuration = 0;
-        this.maxBufferDuration = 100;  // Send every 100ms chunk for AssemblyAI compliance
-        this.minChunkSize = 4800;      // Minimum samples per chunk (100ms at 48kHz, above AssemblyAI 50ms requirement)
+        this.maxBufferDuration = 80;   // Send every 80ms chunk for true real-time
+        this.minChunkSize = 1280;      // Minimum samples per chunk (80ms at 16kHz)
         this.realTimeMode = true;      // Enable real-time continuous streaming
         this.isCallActive = false;
 
@@ -41,60 +41,19 @@ class SalesAgentApp {
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
 
-        // Config will be set after initialization
         this.config = {
-            apiUrl: window.appConfig.apiUrl,
-            wsUrl: window.appConfig.wsUrl
+            apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:8000'
+                : 'https://11880bc4a32b.ngrok-free.app',
+            wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'ws://localhost:8000'
+                : 'wss://11880bc4a32b.ngrok-free.app'
         };
-        
-        console.log('SalesAgentApp initialized with config:', this.config);
     }
 
-    async init() {
-        // Show a loading message
-        console.log('Initializing MARK Sales Agent...');
-        
-        // Ensure backend configuration is working
-        const configured = await window.appConfig.ensureConfigured();
-        if (!configured) {
-            // Instead of alert, show a nicer error message on the page
-            this.showConnectionError();
-            return;
-        }
-        
-        // Update our config with verified values
-        this.config = {
-            apiUrl: window.appConfig.apiUrl,
-            wsUrl: window.appConfig.wsUrl
-        };
-        
-        console.log('Backend verified and configured:', this.config);
-        
+    init() {
         this.setupEventListeners();
         this.initializeClientVAD();
-        this.showLogin();
-    }
-
-    showConnectionError() {
-        // Show connection error on the login screen
-        const loginScreen = document.getElementById('loginScreen');
-        const existingError = document.getElementById('connectionError');
-        
-        if (!existingError) {
-            const errorDiv = document.createElement('div');
-            errorDiv.id = 'connectionError';
-            errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg z-50';
-            errorDiv.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Backend connection failed. Please check settings.</span>
-                    <button onclick="location.reload()" class="ml-2 underline">Retry</button>
-                </div>
-            `;
-            document.body.appendChild(errorDiv);
-        }
-        
-        // Still show login form but with a settings option
         this.showLogin();
     }
 
@@ -171,7 +130,7 @@ class SalesAgentApp {
     }
 
     handleVADSpeechStart(speechProb) {
-        // ECHO PROTECTION: If AI is speaking, temporarily disable barge-in to prevent feedback
+        // IMMEDIATE BARGE-IN: If AI is speaking and user starts speaking, interrupt immediately
         if (this.isAiSpeaking && this.vadEnabled) {
             const now = Date.now();
             
@@ -180,25 +139,11 @@ class SalesAgentApp {
                 return;
             }
             
-            // ENHANCED PROTECTION: Only allow barge-in if speech probability is very high
-            // This helps distinguish real user speech from AI audio feedback
-            const highConfidenceThreshold = 0.85; // Much higher threshold during AI speech
-            if (speechProb < highConfidenceThreshold) {
-                console.log(`� Ignoring low-confidence speech (${speechProb.toFixed(2)}) during AI playback`);
-                return;
-            }
-            
-            // Additional protection: Check if we just started AI audio (likely feedback)
-            const timeSinceAudioStart = now - this.lastAudioStartTime;
-            if (timeSinceAudioStart < 500) { // 500ms protection window
-                console.log(`🔇 Ignoring speech detection too close to AI audio start (${timeSinceAudioStart}ms)`);
-                return;
-            }
-            
             this.lastInterruptTime = now;
             
-            console.log(`🚨 HIGH-CONFIDENCE BARGE-IN: Speech prob ${speechProb.toFixed(2)}, sending interrupt...`);
+            console.log('🚨 CONFIRMED BARGE-IN: Sending interrupt signal to server...');
             
+            // Audio is already stopped by onVADUpdate - just send interrupt signal
             // Send interrupt signal to server for state cleanup
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 this.socket.send(JSON.stringify({ 
@@ -224,25 +169,6 @@ class SalesAgentApp {
             this.intentionalDisconnect = true;
             if (this.socket) {
                 this.socket.close();
-            }
-        });
-        
-        // Settings modal event listeners
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'settingsBtn' || e.target.closest('#settingsBtn')) {
-                this.showSettings();
-            }
-            if (e.target.id === 'loginSettingsBtn' || e.target.closest('#loginSettingsBtn')) {
-                this.showSettings();
-            }
-            if (e.target.id === 'closeSettings') {
-                this.hideSettings();
-            }
-            if (e.target.id === 'saveSettings') {
-                this.saveSettings();
-            }
-            if (e.target.id === 'testConnection') {
-                this.testConnection();
             }
         });
     }
@@ -281,10 +207,7 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${this.config.apiUrl}/login`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': 'true'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
             
@@ -331,76 +254,6 @@ class SalesAgentApp {
         } else {
             // If currentUser element doesn't exist, just log the user
             console.log(`Logged in as: ${this.currentUser}`);
-        }
-    }
-
-    showSettings() {
-        const modal = document.getElementById('settingsModal');
-        const urlInput = document.getElementById('backendUrl');
-        const currentUrl = window.appConfig.apiUrl || localStorage.getItem('backend_url') || '';
-        
-        urlInput.value = currentUrl;
-        modal.classList.remove('hidden');
-    }
-
-    hideSettings() {
-        document.getElementById('settingsModal').classList.add('hidden');
-    }
-
-    async saveSettings() {
-        const url = document.getElementById('backendUrl').value.trim();
-        if (url && url.startsWith('http')) {
-            const success = await window.appConfig.setBackendUrl(url);
-            if (success) {
-                // Update our local config
-                this.config.apiUrl = window.appConfig.apiUrl;
-                this.config.wsUrl = window.appConfig.wsUrl;
-                alert('Backend URL updated successfully!');
-                this.hideSettings();
-            } else {
-                alert('Failed to connect to the provided URL. Please check the URL and try again.');
-            }
-        } else {
-            alert('Please enter a valid URL starting with http:// or https://');
-        }
-    }
-
-    async testConnection() {
-        const url = document.getElementById('backendUrl').value.trim();
-        const testDiv = document.getElementById('connectionTest');
-        
-        if (!url || !url.startsWith('http')) {
-            testDiv.className = 'text-center text-sm text-red-300';
-            testDiv.textContent = 'Please enter a valid URL';
-            testDiv.classList.remove('hidden');
-            return;
-        }
-
-        testDiv.className = 'text-center text-sm text-yellow-300';
-        testDiv.textContent = 'Testing connection...';
-        testDiv.classList.remove('hidden');
-
-        try {
-            const response = await fetch(`${url}/config`, { 
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                timeout: 5000 
-            });
-            
-            if (response.ok) {
-                const config = await response.json();
-                testDiv.className = 'text-center text-sm text-green-300';
-                testDiv.textContent = `✅ Connection successful! Backend: ${config.backend_url}`;
-            } else {
-                testDiv.className = 'text-center text-sm text-red-300';
-                testDiv.textContent = '❌ Server responded with error';
-            }
-        } catch (error) {
-            testDiv.className = 'text-center text-sm text-red-300';
-            testDiv.textContent = '❌ Connection failed - check URL and backend status';
         }
     }
 
@@ -578,7 +431,7 @@ class SalesAgentApp {
             this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 48000
+                sampleRate: 16000
             });
             
             if (this.audioContext.state === 'suspended') {
@@ -727,7 +580,7 @@ class SalesAgentApp {
             data: base64Data,
             format: 'pcm16',
             chunk_size: audioData.length,
-            sample_rate: 48000,  // Updated to match actual frontend sample rate
+            sample_rate: 16000,
             timestamp: now
         }));
     }
@@ -1107,8 +960,7 @@ class SalesAgentApp {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`,
-                    'ngrok-skip-browser-warning': 'true'
+                    'Authorization': `Bearer ${this.token}`
                 },
                 body: JSON.stringify({
                     session_id: this.sessionId,

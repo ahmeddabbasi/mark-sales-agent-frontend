@@ -13,7 +13,7 @@ class Config {
         } else {
                         // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('4c600353c8a713bdb33b8e0d31606289.serveo.net')) {
+            if (savedUrl && !savedUrl.includes('11880bc4a32b.ngrok-free.app')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -25,9 +25,9 @@ class Config {
                 this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                // Use the current tunnel URL as default
-                this.apiUrl = 'https://4c600353c8a713bdb33b8e0d31606289.serveo.net';
-                this.wsUrl = 'wss://4c600353c8a713bdb33b8e0d31606289.serveo.net';
+                // Use the current ngrok tunnel URL as default
+                this.apiUrl = 'https://11880bc4a32b.ngrok-free.app';
+                this.wsUrl = 'wss://11880bc4a32b.ngrok-free.app';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
