@@ -13,7 +13,7 @@ class Config {
         } else {
                         // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('tender-owls-sleep.loca.lt')) {
+            if (savedUrl && !savedUrl.includes('78e6f569468422ec9651a9acd642cbaa.serveo.net')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -25,9 +25,9 @@ class Config {
                 this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                // Use the current localtunnel URL as default
-                this.apiUrl = 'https://tender-owls-sleep.loca.lt';
-                this.wsUrl = 'wss://tender-owls-sleep.loca.lt';
+                // Use the current serveo tunnel URL as default
+                this.apiUrl = 'https://78e6f569468422ec9651a9acd642cbaa.serveo.net';
+                this.wsUrl = 'wss://78e6f569468422ec9651a9acd642cbaa.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }

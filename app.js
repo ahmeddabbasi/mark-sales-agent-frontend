@@ -44,10 +44,10 @@ class SalesAgentApp {
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://tender-owls-sleep.loca.lt',
+                : 'https://78e6f569468422ec9651a9acd642cbaa.serveo.net',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://tender-owls-sleep.loca.lt'
+                : 'wss://78e6f569468422ec9651a9acd642cbaa.serveo.net'
         };
     }
 
@@ -207,10 +207,7 @@ class SalesAgentApp {
         try {
             const response = await fetch(`${this.config.apiUrl}/login`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Bypass-Tunnel-Reminder': 'true'  // Required for localtunnel
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
             
