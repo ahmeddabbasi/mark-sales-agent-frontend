@@ -13,7 +13,7 @@ class Config {
         } else {
                         // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('467913c5d884ae2cf20bf046bfe9c389.serveo.net')) {
+            if (savedUrl && !savedUrl.includes('80c7390e7c35e6312020b31b05ff2973.serveo.net')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -26,8 +26,8 @@ class Config {
                 this.isConfigured = false; // Still need to verify
             } else {
                 // Use the NEW serveo tunnel URL as default
-                this.apiUrl = 'https://467913c5d884ae2cf20bf046bfe9c389.serveo.net';
-                this.wsUrl = 'wss://467913c5d884ae2cf20bf046bfe9c389.serveo.net';
+                this.apiUrl = 'https://80c7390e7c35e6312020b31b05ff2973.serveo.net';
+                this.wsUrl = 'wss://80c7390e7c35e6312020b31b05ff2973.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
@@ -95,7 +95,7 @@ class Config {
         // If verification failed and we're in production, try a few common patterns silently
         if (!this.isDevelopment) {
             const fallbackUrls = [
-                'https://61998bca0380717425730ee490a70e06.serveo.net', // Current tunnel URL
+                'https://80c7390e7c35e6312020b31b05ff2973.serveo.net', // Current tunnel URL
                 localStorage.getItem('backend_url')
             ].filter(Boolean);
             
