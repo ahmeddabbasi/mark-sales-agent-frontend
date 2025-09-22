@@ -433,6 +433,21 @@ class SalesAgentApp {
 
     async connectWebSocket() {
         try {
+            // CRITICAL: Prevent multiple concurrent connections
+            if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+                console.log('⚠️ WebSocket connection already in progress, waiting...');
+                return;
+            }
+            
+            // Close existing connection if it exists
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                console.log('🔌 Closing existing WebSocket before creating new one');
+                this.intentionalDisconnect = true;
+                this.socket.close();
+                this.socket = null;
+            }
+            
+            console.log('🔗 Creating new WebSocket connection...');
             this.socket = new WebSocket(`${this.config.wsUrl}/ws/${this.sessionId}`);
 
             this.socket.onopen = () => {
@@ -447,10 +462,35 @@ class SalesAgentApp {
             };
 
             this.socket.onclose = (event) => {
+                console.log('🔌 WebSocket connection closed. Code:', event.code, 'Reason:', event.reason, 'Intentional:', this.intentionalDisconnect);
                 this.updateConnectionStatus(false);
-                if (this.reconnectAttempts < 5 && event.code !== 1000) {
+                
+                // Check if the closure was intentional (via endCall button) or user logged out
+                if (this.intentionalDisconnect || !this.isLoggedIn) {
+                    console.log('✅ WebSocket closed intentionally - performing final cleanup');
+                    // Ensure cleanup happens (may be redundant but safe)
+                    this.cleanupCallResources(); 
+                    this.intentionalDisconnect = false; // Reset flag for next session
+                    return; 
+                }
+
+                // Only attempt reconnection if a call is ACTIVELY supposed to be running
+                if (this.isCallActive && this.reconnectAttempts < 5 && event.code !== 1000) {
                     this.reconnectAttempts++;
-                    setTimeout(() => this.connectWebSocket(), 2000 * this.reconnectAttempts);
+                    console.warn(`🔄 Call is active but WebSocket closed unexpectedly. Attempting reconnection ${this.reconnectAttempts}/5...`);
+                    setTimeout(() => {
+                        // Double-check that call is still active before reconnecting
+                        if (this.isCallActive) {
+                            this.connectWebSocket();
+                        } else {
+                            console.log('📴 Call no longer active - canceling reconnection');
+                        }
+                    }, 2000 * this.reconnectAttempts);
+                } else {
+                    // If call is not active OR max reconnects reached, clean up and wait for user action
+                    console.log('📴 Call not active or max reconnects reached - cleaning up and waiting for user action');
+                    this.cleanupCallResources();
+                    this.reconnectAttempts = 0; // Reset for next call
                 }
             };
 
@@ -567,6 +607,7 @@ class SalesAgentApp {
                 break;
             case 'session_refreshed':
                 console.log('Session refreshed:', message.message);
+                // CRITICAL: Do NOT start a new call automatically
                 // Clear the conversation area
                 const convArea = document.getElementById('conversationArea');
                 if (convArea) { 
@@ -577,6 +618,8 @@ class SalesAgentApp {
                 // Clear audio queue
                 this.audioQueue = [];
                 this.isAudioPlaying = false;
+                // Ensure call is marked as inactive
+                this.isCallActive = false;
                 // Show a system message about the refresh
                 this.addMessage('System', 'Session refreshed! Ready for next call.', 'system');
                 // Reset session info display
@@ -584,6 +627,7 @@ class SalesAgentApp {
                 break;
             case 'session_auto_refreshed':
                 console.log('Session auto-refreshed due to inactivity:', message.message);
+                // CRITICAL: Do NOT start a new call automatically
                 // Clear the conversation area
                 const convAreaAuto = document.getElementById('conversationArea');
                 if (convAreaAuto) { 
@@ -594,6 +638,8 @@ class SalesAgentApp {
                 // Clear audio queue
                 this.audioQueue = [];
                 this.isAudioPlaying = false;
+                // Ensure call is marked as inactive
+                this.isCallActive = false;
                 // Show a system message about the auto-refresh
                 this.addMessage('System', '⏰ Session automatically refreshed due to 50 seconds of inactivity. Ready for next call!', 'system');
                 // Reset session info display
@@ -648,6 +694,21 @@ class SalesAgentApp {
 
     async startCall() {
         try {
+            // CRITICAL: Prevent multiple concurrent calls
+            if (this.isCallActive) {
+                console.log('⚠️ Call already active, ignoring startCall request');
+                return;
+            }
+            
+            // CRITICAL: Clean up any previous resources before starting new call
+            if (this.stream || this.audioContext) {
+                console.log('🧹 Cleaning up previous call resources...');
+                await this.cleanupCallResources();
+            }
+            
+            console.log('🎯 Starting new call...');
+            this.isCallActive = true;
+            
             // Initialize Web Audio API for seamless TTS playback
             await this.initializeWebAudio();
             
@@ -750,7 +811,11 @@ class SalesAgentApp {
             
             console.log('Call started successfully');
         } catch (error) {
+            console.error('Failed to start call:', error);
             this.showError('Failed to start call: ' + error.message);
+            // CRITICAL: Clean up state if startCall fails
+            this.isCallActive = false;
+            await this.cleanupCallResources();
         }
     }
 
@@ -780,6 +845,80 @@ class SalesAgentApp {
         this.isCallActive = false;
         this.isRecording = false;
         this.updateMicButton();
+    }
+    
+    async cleanupAudioResources() {
+        console.log('🧹 Cleaning up audio resources only (keeping WebSocket for next call)...');
+        
+        // 1. CRITICAL: Stop the Microphone Stream Tracks
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => {
+                if (track.readyState === 'live') {
+                    track.stop();
+                }
+            });
+            this.stream = null;
+            console.log('✅ Microphone stream tracks stopped.');
+        }
+
+        // 2. CRITICAL: Close the AudioContext with proper Promise handling
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            try {
+                await this.audioContext.close();
+                console.log('✅ AudioContext successfully closed.');
+            } catch (e) {
+                console.error("Error closing AudioContext:", e);
+            }
+        }
+        this.audioContext = null;
+
+        // 3. Disconnect the Worklet Node
+        if (this.workletNode) {
+            this.workletNode.disconnect();
+            this.workletNode = null;
+            console.log('✅ AudioWorklet Node disconnected.');
+        }
+
+        // 4. Reset VAD state
+        if (this.clientVAD) {
+            this.clientVAD.reset();
+        }
+
+        // 5. Reset audio-related flags (keep WebSocket and connection state)
+        this.audioBuffer = [];
+        this.bufferDuration = 0;
+        this.isCallActive = false;
+        this.isRecording = false;
+        this.isAudioPlaying = false;
+        this.isAiSpeaking = false;
+        this.lastVadState = null;
+        
+        // 6. Update UI but keep connection status (WebSocket still connected)
+        this.updateMicButton();
+        
+        console.log('🎯 Audio resources cleaned up - WebSocket maintained for next call');
+    }
+
+    async cleanupCallResources() {
+        console.log('🧹 Initiating comprehensive resource cleanup...');
+        
+        // 1. Clean up audio resources first
+        await this.cleanupAudioResources();
+        
+        // 2. CRITICAL: Close WebSocket connection completely
+        if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+            console.log('🔌 Closing WebSocket connection completely...');
+            this.intentionalDisconnect = true;
+            this.socket.close();
+            this.socket = null;
+            console.log('✅ WebSocket connection closed.');
+        }
+
+        // 3. Reset connection-related state
+        this.reconnectAttempts = 0; // Reset reconnection attempts
+        this.updateConnectionStatus(false);
+        
+        console.log('🎯 Complete resource cleanup finished - ready for fresh start');
     }
     
     
@@ -1195,6 +1334,9 @@ class SalesAgentApp {
         }
         
         try {
+            // CRITICAL: Keep WebSocket OPEN during call-summary request 
+            // so backend can send session refresh notification
+            console.log('� Sending call summary to backend...');
             const response = await fetch(`${this.config.apiUrl}/call-summary`, {
                 method: 'POST',
                 headers: { 
@@ -1211,13 +1353,27 @@ class SalesAgentApp {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Call ended successfully:', data);
-                this.stopCall();
+                
+                // CRITICAL: Only clean up audio resources, keep WebSocket for next call
+                await this.cleanupAudioResources();
+                
+                // Check if session was refreshed by backend
+                if (data.sheets_updated) {
+                    console.log('✅ Session refreshed by backend - ready for next call');
+                } else {
+                    console.log('⚠️ Session not refreshed - manual cleanup');
+                    await this.cleanupCallResources();
+                }
             } else {
                 this.showError('Failed to end call properly');
+                // Cleanup all resources if backend call fails
+                await this.cleanupCallResources();
             }
         } catch (error) {
             console.error('Error ending call:', error);
             this.showError('Error ending call');
+            // Cleanup all resources on error
+            await this.cleanupCallResources();
         }
     }
 
