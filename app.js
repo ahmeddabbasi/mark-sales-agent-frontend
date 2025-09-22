@@ -668,9 +668,7 @@ class SalesAgentApp {
             console.log('Requesting microphone access...');
             this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 16000
-            });
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
             if (this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
