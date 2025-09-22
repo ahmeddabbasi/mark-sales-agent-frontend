@@ -1,4 +1,4 @@
-// Real-Time Audio Worklet Processor with Client-Side VAD
+
 // Downsamples browser audio to 16kHz PCM16 with minimal latency
 // Includes immediate VAD processing for zero-latency barge-in
 

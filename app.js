@@ -31,30 +31,60 @@ class SalesAgentApp {
         this.clientVAD = null;
         this.vadEnabled = false;
         this.lastInterruptTime = 0;
-        this.minInterruptInterval = 1000; // Minimum 1 second between interrupts
+        this.minInterruptInterval = 500; // Reduced for faster interrupts
+        
+        // REMOVED: Complex validation logic for immediate interrupts
+        this.lastInterruptWasValid = true;
+        this.lastInterruptSource = null;
+        
+        // Simplified speech detection state for immediate response
+        this.speechDetectionBuffer = [];
+        this.speechBufferSize = 3; // Minimal buffer for immediate response
+        this.serverVADBuffer = [];
+        this.serverVADBufferSize = 3; // Minimal server buffer
+        
+        // REMOVED: Complex single word detection for immediate response
+        this.speechStartTime = 0;
+        this.serverSpeechStartTime = 0;
         
         // Interruption control - blocks all audio during barge-in
         this.isInterrupting = false;
-        this.interruptionTimeout = null;
         this.lastAudioStartTime = 0; // Track when audio playback starts (for feedback protection)
 
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
+        
+        // Conversation script management
+        this.conversationScript = '';
 
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://78e6f569468422ec9651a9acd642cbaa.serveo.net',
+                : 'https://467913c5d884ae2cf20bf046bfe9c389.serveo.net',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://78e6f569468422ec9651a9acd642cbaa.serveo.net'
+                : 'wss://467913c5d884ae2cf20bf046bfe9c389.serveo.net'
         };
     }
 
     init() {
+        console.log('🚀 Initializing SalesAgentApp...');
         this.setupEventListeners();
         this.initializeClientVAD();
         this.showLogin();
+        
+        // Debug: Check if script modal elements exist on page load
+        setTimeout(() => {
+            const modal = document.getElementById('scriptModal');
+            const button = document.getElementById('confirmScriptButton');
+            const textarea = document.getElementById('conversationScript');
+            
+            console.log('🔍 DOM Elements Check:', {
+                modal: !!modal,
+                button: !!button,
+                textarea: !!textarea
+            });
+        }, 1000);
     }
 
     async initializeClientVAD() {
@@ -68,8 +98,8 @@ class SalesAgentApp {
             }
             
             this.clientVAD = new ClientVAD({
-                threshold: 0.3,                // Lower threshold for more sensitive detection
-                minSpeechDurationMs: 150,      // Very fast speech detection (150ms)
+                threshold: 0.6,                // Higher threshold for more reliable detection
+                minSpeechDurationMs: 200,      // Slightly longer to avoid false positives
                 minSilenceDurationMs: 100,     // Quick silence detection (100ms)
                 speechPadMs: 30                // Minimal padding
             });
@@ -85,29 +115,37 @@ class SalesAgentApp {
                     this.handleVADSpeechEnd(speechProb);
                 },
                 onVADUpdate: (speechProb, isSpeaking) => {
-                    // SMART INTERRUPTION: Only trigger during AI speech, with audio feedback protection
-                    if (this.isAiSpeaking && speechProb > 0.3) {  // Higher threshold to avoid false positives
-                        // AUDIO FEEDBACK PROTECTION: Check if this might be AI audio feedback
+                    // IMMEDIATE INTERRUPTION: Only trigger during AI speech
+                    if (this.isAiSpeaking && isSpeaking && speechProb > 0.6) {
                         const currentTime = Date.now();
                         const timeSinceAudioStart = currentTime - (this.lastAudioStartTime || 0);
                         
-                        // Don't interrupt immediately after audio starts (likely feedback)
-                        if (timeSinceAudioStart < 500) {  // 500ms grace period
+                        // Prevent interrupting immediately after AI starts speaking (audio feedback protection)
+                        if (timeSinceAudioStart < 500) {  // Reduced to 500ms for faster response
                             console.log(`🔊 Ignoring potential audio feedback (${timeSinceAudioStart}ms after audio start)`);
                             return;
                         }
                         
-                        console.log(`⚡ REAL USER SPEECH: Detected (${speechProb.toFixed(3)}) - stopping TTS`);
+                        // Prevent rapid fire interrupts
+                        if (currentTime - this.lastInterruptTime < 1000) {
+                            return;
+                        }
                         
-                        // Stop current audio immediately (but don't block future audio)
+                        console.log(`🛑 IMMEDIATE INTERRUPT! Speech prob: ${speechProb.toFixed(3)}, stopping AI...`);
+                        this.lastInterruptTime = currentTime;
+                        
+                        // STEP 1: Immediately stop audio playback
                         this.stopAudioPlayback();
                         
-                        // Send interrupt to server
+                        // STEP 2: Send interrupt signal to server immediately
                         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                             this.socket.send(JSON.stringify({ 
                                 type: 'interrupt',
-                                source: 'client_vad_speech'
+                                source: 'client_vad_immediate',
+                                speechProb: speechProb,
+                                timestamp: currentTime
                             }));
+                            console.log("📤 Sent immediate interrupt signal to server");
                         }
                     }
                     
@@ -116,7 +154,11 @@ class SalesAgentApp {
                 }
             });
             
-            // Initialize the VAD model
+            // Initialize speech detection tracking for server VAD fallback (optimized)
+        this.serverVADBuffer = [];
+        this.serverVADBufferSize = 4; // Reduced from 6
+        this.serverVADConfirmationTime = 400; // Reduced from 500ms
+        this.serverSpeechStartTime = 0; // Track single words in server VAD
             await this.clientVAD.initialize();
             this.vadEnabled = true;
             
@@ -129,33 +171,62 @@ class SalesAgentApp {
         }
     }
 
+    /**
+     * Simplified speech detection - no complex validation
+     */
+    confirmSpeechActivity(currentSpeechProb, isSpeaking) {
+        // REMOVED: Complex validation logic for immediate interrupts
+        return isSpeaking && currentSpeechProb > 0.6;
+    }
+
+    /**
+     * Simplified server speech detection
+     */
+    confirmServerSpeechActivity(currentSpeechDetected) {
+        // REMOVED: Complex validation logic for immediate interrupts
+        return currentSpeechDetected;
+    }
+
+    /**
+     * Reset speech detection buffers when AI starts/stops speaking
+     */
+    resetSpeechDetection() {
+        this.speechDetectionBuffer = [];
+        this.serverVADBuffer = [];
+        this.speechStartTime = 0;
+        this.serverSpeechStartTime = 0;
+        console.log('🔄 Speech detection buffers reset');
+    }
+
+    /**
+     * Simplified interrupt validation - no false positive protection for zero latency
+     */
+    validateInterrupt(interruptSource) {
+        // REMOVED: Complex validation logic for immediate interrupts
+        this.lastInterruptSource = interruptSource;
+        this.lastInterruptWasValid = true;
+        console.log('✅ Interrupt accepted immediately - no validation delay');
+    }
+
+    /**
+     * Simplified speech buffer check
+     */
+    hasValidSpeechInBuffer() {
+        // REMOVED: Complex buffer analysis for immediate interrupts
+        return true;
+    }
+
+    /**
+     * Speech resume functionality (simplified)
+     */
+    requestSpeechResume() {
+        // REMOVED: Auto-resume logic to prevent unwanted speech restart
+        console.log('📤 Speech resume disabled for immediate interrupts');
+    }
+
     handleVADSpeechStart(speechProb) {
-        // IMMEDIATE BARGE-IN: If AI is speaking and user starts speaking, interrupt immediately
-        if (this.isAiSpeaking && this.vadEnabled) {
-            const now = Date.now();
-            
-            // Prevent rapid fire interrupts
-            if (now - this.lastInterruptTime < this.minInterruptInterval) {
-                return;
-            }
-            
-            this.lastInterruptTime = now;
-            
-            console.log('🚨 CONFIRMED BARGE-IN: Sending interrupt signal to server...');
-            
-            // Audio is already stopped by onVADUpdate - just send interrupt signal
-            // Send interrupt signal to server for state cleanup
-            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                this.socket.send(JSON.stringify({ 
-                    type: 'interrupt',
-                    source: 'client_vad',
-                    speechProb: speechProb,
-                    timestamp: now
-                }));
-            }
-            
-            console.log('📤 Interrupt signal sent to server for state cleanup');
-        }
+        // Speech start is now handled by the improved onVADUpdate with sustained speech confirmation
+        // This function is kept for compatibility but no longer triggers immediate interrupts
     }
 
     handleVADSpeechEnd(speechProb) {
@@ -171,6 +242,18 @@ class SalesAgentApp {
                 this.socket.close();
             }
         });
+        
+        // Script modal event listener with debugging
+        const confirmButton = document.getElementById('confirmScriptButton');
+        if (confirmButton) {
+            confirmButton.addEventListener('click', () => {
+                console.log('🔘 Confirm script button clicked');
+                this.confirmScript();
+            });
+            console.log('✅ Script confirm button event listener added');
+        } else {
+            console.error('❌ Confirm script button not found during setup');
+        }
     }
 
     showLogin() {
@@ -222,7 +305,9 @@ class SalesAgentApp {
                 this.currentUser = username;
                 this.isLoggedIn = true;
                 
-                this.showMainApp();
+                console.log('🔍 DEBUG: About to show script modal');
+                // ⬅️ NEW: SHOW THE SCRIPT MODAL INSTEAD OF DIRECTLY UPDATING UI
+                this.showScriptModal(); 
                 await this.connectWebSocket();
             } else {
                 const error = await response.json();
@@ -255,6 +340,95 @@ class SalesAgentApp {
             // If currentUser element doesn't exist, just log the user
             console.log(`Logged in as: ${this.currentUser}`);
         }
+    }
+
+    // ------------------ Script Persistence Methods ------------------
+
+    loadScriptFromLocalStorage() {
+        const scriptInput = document.getElementById('conversationScript');
+        const savedScript = localStorage.getItem('userConversationScript');
+        
+        if (savedScript && scriptInput) {
+            this.conversationScript = savedScript;
+            scriptInput.value = savedScript; // Pre-populate the modal's textarea
+        } else if (scriptInput) {
+            // Default script if none is saved
+            const defaultScript = "Your primary goal is to schedule a follow-up call. Start with a polite introduction and state the reason for your call clearly. Be professional, friendly, and focus on understanding the customer's trucking needs.";
+            this.conversationScript = defaultScript;
+            scriptInput.value = defaultScript;
+        }
+    }
+
+    saveScriptToLocalStorage(scriptText) {
+        this.conversationScript = scriptText;
+        localStorage.setItem('userConversationScript', scriptText);
+        console.log('✅ Script saved to local storage');
+    }
+    
+    // ------------------ Script Modal Logic ------------------
+
+    // Call this immediately after a successful sign-in
+    showScriptModal() {
+        console.log('🔍 DEBUG: showScriptModal called');
+        
+        // Check if the modal element exists
+        const modal = document.getElementById('scriptModal');
+        const button = document.getElementById('confirmScriptButton');
+        const textarea = document.getElementById('conversationScript');
+        
+        console.log('🔍 Element check in showScriptModal:', {
+            modal: !!modal,
+            button: !!button,
+            textarea: !!textarea,
+            modalClasses: modal ? modal.classList.toString() : 'N/A'
+        });
+        
+        if (!modal) {
+            console.error('❌ Script modal element not found!');
+            // Fallback to show main app directly
+            this.showMainApp();
+            return;
+        }
+        
+        console.log('✅ Script modal element found');
+        
+        // 1. Load the previously saved script
+        this.loadScriptFromLocalStorage(); 
+        
+        // 2. Display the modal
+        modal.classList.remove('hidden');
+        console.log('📝 Script modal displayed, current classes:', modal.classList.toString());
+    }
+
+    // Call this when the user clicks "Confirm & Continue"
+    confirmScript() {
+        const scriptInput = document.getElementById('conversationScript');
+        const newScript = scriptInput.value.trim();
+        
+        if (!newScript) {
+            alert('The conversation script cannot be empty. Please enter instructions.');
+            return;
+        }
+
+        // 1. Save the confirmed script for future sessions
+        this.saveScriptToLocalStorage(newScript); 
+        
+        // 2. Send the script to the backend if WebSocket is connected
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({
+                type: 'set_conversation_script',
+                script: newScript
+            }));
+            console.log('📤 Sent conversation script to backend');
+        }
+        
+        // 3. Hide the modal
+        document.getElementById('scriptModal').classList.add('hidden');
+        
+        // 4. Transition to the main agent UI
+        this.showMainApp(); 
+        
+        console.log('✅ Script confirmed and saved');
     }
 
     async connectWebSocket() {
@@ -297,8 +471,16 @@ class SalesAgentApp {
             case 'transcription':
                 this.addMessage('You', message.text, 'user');
                 break;
+            case 'simple_greeting':
+                // Handle periodic "hi" greetings - don't add to chat history
+                console.log('👋 Received simple greeting:', message.text);
+                if (message.audio) {
+                    console.log('Playing simple greeting audio');
+                    this.playAudio(message.audio, message.sample_rate);
+                }
+                break;
             case 'ai_response':
-                // Initial greeting
+                // Full AI response (like introduction)
                 this.addMessage('MARK (AI Agent)', message.text, 'agent');
                 if (message.audio) {
                     console.log('Playing AI response audio (single)');
@@ -329,17 +511,50 @@ class SalesAgentApp {
                 this.updateVadStatus(message.speech_detected, message.timestamp);
                 
                 // Fallback: If client-side VAD is not available, use server-side VAD for barge-in
-                if (!this.vadEnabled && message.speech_detected && this.isAiSpeaking) {
-                    console.log('🗣️ Server VAD: User barge-in detected (fallback mode)');
-                    // Send interrupt signal to server
-                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                        this.socket.send(JSON.stringify({ 
-                            type: 'interrupt',
-                            source: 'server_vad_fallback'
-                        }));
+                if (!this.vadEnabled && this.isAiSpeaking) {
+                    // Only proceed if speech is detected (skip buffer operations for non-speech)
+                    if (message.speech_detected) {
+                        // Add reading to server VAD buffer for sustained speech confirmation
+                        this.serverVADBuffer.push({
+                            timestamp: Date.now(),
+                            speechDetected: true
+                        });
+                        
+                        const now = Date.now();
+                        const timeSinceAudioStart = now - (this.lastAudioStartTime || 0);
+                        
+                        // Don't interrupt immediately after audio starts (likely feedback)
+                        if (timeSinceAudioStart < 1200) {  // Reduced grace period for faster response
+                            break;
+                        }
+                        
+                        // Confirm sustained speech activity before interrupting
+                        const isSustainedSpeech = this.confirmServerSpeechActivity(message.speech_detected);
+                        
+                        if (!isSustainedSpeech) {
+                            break;
+                        }
+                        
+                        // Prevent rapid fire interrupts
+                        if (now - this.lastInterruptTime < this.minInterruptInterval * 1.5) {  // Reduced multiplier
+                            break;
+                        }
+                        
+                        this.lastInterruptTime = now;
+                        
+                        // Send interrupt signal to server
+                        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                            this.socket.send(JSON.stringify({ 
+                                type: 'interrupt',
+                                source: 'server_vad_fallback'
+                            }));
+                        }
+                        // Stop client audio playback
+                        this.stopAudioPlayback();
+                        
+                        // REMOVED: Validation delay for immediate interrupts
+                        console.log('✅ Server VAD interrupt accepted immediately');
                     }
-                    // Stop client audio playback
-                    this.stopAudioPlayback();
                 }
                 break;
             case 'stop_audio':
@@ -367,11 +582,31 @@ class SalesAgentApp {
                 // Reset session info display
                 this.resetSessionInfoDisplay();
                 break;
+            case 'session_auto_refreshed':
+                console.log('Session auto-refreshed due to inactivity:', message.message);
+                // Clear the conversation area
+                const convAreaAuto = document.getElementById('conversationArea');
+                if (convAreaAuto) { 
+                    convAreaAuto.innerHTML = ''; 
+                }
+                // Reset the current AI response div
+                this.currentAiResponseDiv = null;
+                // Clear audio queue
+                this.audioQueue = [];
+                this.isAudioPlaying = false;
+                // Show a system message about the auto-refresh
+                this.addMessage('System', '⏰ Session automatically refreshed due to 50 seconds of inactivity. Ready for next call!', 'system');
+                // Reset session info display
+                this.resetSessionInfoDisplay();
+                break;
             case 'session_update':
                 this.updateSessionInfo(message.data);
                 break;
             case 'error':
                 this.showError(message.message);
+                break;
+            case 'script_updated':
+                console.log('✅ Conversation script updated on backend:', message.message);
                 break;
             case 'call_ended':
                 this.addMessage('System', `Call ended: ${message.message}`, 'system');
@@ -385,6 +620,9 @@ class SalesAgentApp {
                 micBtn.disabled = false;
                 micBtn.classList.remove('opacity-50');
                 this.resetSessionInfoDisplay();
+                break;
+            case 'script_updated':
+                console.log('✅ Conversation script updated successfully');
                 break;
         }
     }
@@ -464,20 +702,22 @@ class SalesAgentApp {
                         }
                     }
                 } else if (type === 'vadResult') {
-                    // Handle VAD result from worklet (fallback if client VAD not available)
+                    // Handle VAD result from worklet (immediate fallback)
                     if (!this.vadEnabled) {
                         const vadResult = data;
                         
-                        // IMMEDIATE STOPPING: If worklet detected speech and AI is speaking
+                        // IMMEDIATE INTERRUPTION: Any speech during AI speaking triggers immediate stop
                         if (vadResult.speechProb > 0.2 && this.isAiSpeaking) {
-                            console.log(`⚡ Worklet VAD: Immediate stop (${vadResult.speechProb.toFixed(3)})`);
+                            console.log(`⚡ Worklet VAD: Immediate interrupt (${vadResult.speechProb.toFixed(3)})`);
                             this.stopAudioPlayback();
-                        }
-                        
-                        // If worklet detected speech and AI is speaking, trigger barge-in
-                        if (vadResult.isSpeaking && this.isAiSpeaking && vadResult.stateChanged) {
-                            console.log('🗣️ Worklet VAD: Speech detected during AI speaking - triggering barge-in');
-                            this.handleVADSpeechStart(vadResult.speechProb);
+                            
+                            // Send immediate interrupt to server
+                            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                                this.socket.send(JSON.stringify({ 
+                                    type: 'interrupt',
+                                    source: 'worklet_vad'
+                                }));
+                            }
                         }
                         
                         // Update VAD status display
@@ -651,6 +891,7 @@ class SalesAgentApp {
 
         this.isAudioPlaying = true;
         this.isAiSpeaking = true; // AI is now speaking
+        this.resetSpeechDetection(); // Clear any previous speech detection state
         this.lastAudioStartTime = Date.now(); // Track audio start time for feedback protection
         const chunk = this.audioQueue.shift();
 

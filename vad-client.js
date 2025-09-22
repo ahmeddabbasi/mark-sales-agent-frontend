@@ -49,25 +49,28 @@ class ClientVAD {
         if (this.isInitialized) return;
         
         try {
-            console.log('🚀 Using energy-based VAD (Silero disabled for CORS issues)...');
+            console.log('🚀 Initializing Silero ONNX VAD for zero-latency barge-in...');
             
-            // Skip ONNX/Silero loading due to CORS issues on Vercel
-            // Use energy-based VAD only for now
-            console.log('📊 Energy-based VAD initialized');
+            // Load ONNX Runtime from CDN
+            await this.loadONNXRuntimeFromCDN();
             
-            this.initialized = true;
-            console.log('✅ ClientVAD initialized successfully with energy-based detection');
+            // Load Silero VAD model
+            console.log('� Loading Silero VAD model...');
+            this.session = await ort.InferenceSession.create(this.modelUrl, {
+                executionProviders: ['wasm'],
+                logSeverityLevel: 3  // Suppress logs
+            });
             
-            // Initialize LSTM states (h and c) - Silero VAD uses LSTM
+            // Initialize LSTM states
             this.resetStates();
             
             this.isLoaded = true;
             this.isInitialized = true;
             
-            console.log('🎯 ClientVAD ready for real-time speech detection!');
+            console.log('✅ Silero ONNX VAD initialized successfully - zero-latency barge-in ready!');
             
         } catch (error) {
-            console.error('❌ Failed to initialize ClientVAD:', error);
+            console.error('❌ Failed to initialize Silero VAD:', error);
             
             // Fallback to energy-based VAD
             console.log('🔄 Falling back to energy-based VAD...');
