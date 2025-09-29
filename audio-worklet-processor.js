@@ -16,12 +16,12 @@ class DownsampleTo16kPCM16Processor extends AudioWorkletProcessor {
         this._vadWindowSize = 1024; // 64ms at 16kHz for VAD
         this._lastVadResult = { speechProb: 0, isSpeaking: false };
         
-        // Energy-based VAD parameters (lightweight fallback)
-        this._energyThreshold = 0.01;
+        // Energy-based VAD parameters (lightweight fallback) - Less sensitive to background noise
+        this._energyThreshold = 0.05;  // Increased from 0.01 - much less sensitive
         this._speechFrames = 0;
         this._silenceFrames = 0;
-        this._minSpeechFrames = 4;  // ~250ms of speech
-        this._minSilenceFrames = 2; // ~125ms of silence
+        this._minSpeechFrames = 8;  // ~500ms of speech (increased from 250ms)
+        this._minSilenceFrames = 5; // ~300ms of silence (increased from 125ms)
         this._currentIsSpeaking = false;
         
         console.log('🎤 Audio Worklet with VAD initialized');
@@ -32,8 +32,8 @@ class DownsampleTo16kPCM16Processor extends AudioWorkletProcessor {
             
             if (type === 'vadConfig') {
                 this._energyThreshold = data.threshold || this._energyThreshold;
-                this._minSpeechFrames = Math.floor((data.minSpeechDurationMs || 250) / 64);
-                this._minSilenceFrames = Math.floor((data.minSilenceDurationMs || 125) / 64);
+                this._minSpeechFrames = Math.floor((data.minSpeechDurationMs || 500) / 64);
+                this._minSilenceFrames = Math.floor((data.minSilenceDurationMs || 300) / 64);
                 console.log('🔧 VAD config updated in worklet:', data);
             }
         };

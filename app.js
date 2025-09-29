@@ -31,7 +31,16 @@ class SalesAgentApp {
         this.clientVAD = null;
         this.vadEnabled = false;
         this.lastInterruptTime = 0;
-        this.minInterruptInterval = 500; // Reduced for faster interrupts
+        this.minInterruptInterval = 2000; // Increased for background noise protection
+        
+        // VAD sensitivity settings (tuned for background noise rejection)
+        this.vadConfig = {
+            sileroThreshold: 0.75,      // Higher threshold = less sensitive
+            energyThreshold: 0.05,      // Higher threshold = less sensitive  
+            minSpeechMs: 400,          // Longer minimum = ignore brief sounds
+            minSilenceMs: 300,         // Longer silence = more confident end detection
+            interruptThreshold: 0.85    // Very high confidence required for interruption
+        };
         
         // REMOVED: Complex validation logic for immediate interrupts
         this.lastInterruptWasValid = true;
@@ -53,17 +62,14 @@ class SalesAgentApp {
 
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
-        
-        // Conversation script management
-        this.conversationScript = '';
 
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://80c7390e7c35e6312020b31b05ff2973.serveo.net',
+                : 'https://b3bd2e7430731357af1db0582080b894.serveo.net',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://80c7390e7c35e6312020b31b05ff2973.serveo.net'
+                : 'wss://b3bd2e7430731357af1db0582080b894.serveo.net'
         };
     }
 
@@ -73,35 +79,25 @@ class SalesAgentApp {
         this.initializeClientVAD();
         this.showLogin();
         
-        // Debug: Check if script modal elements exist on page load
-        setTimeout(() => {
-            const modal = document.getElementById('scriptModal');
-            const button = document.getElementById('confirmScriptButton');
-            const textarea = document.getElementById('conversationScript');
-            
-            console.log('🔍 DOM Elements Check:', {
-                modal: !!modal,
-                button: !!button,
-                textarea: !!textarea
-            });
-        }, 1000);
+
     }
 
     async initializeClientVAD() {
         try {
-            console.log('🎤 Initializing client-side VAD for zero-latency barge-in...');
+            console.log('🎤 Initializing Silero VAD for zero-latency barge-in...');
             
-            // Check if ClientVAD is available
-            if (typeof ClientVAD === 'undefined') {
-                console.warn('⚠️ ClientVAD not available, using fallback energy VAD');
+            // Check if SileroVADClient is available
+            if (typeof SileroVADClient === 'undefined') {
+                console.warn('⚠️ SileroVADClient not available, using fallback energy VAD');
                 return;
             }
             
-            this.clientVAD = new ClientVAD({
-                threshold: 0.6,                // Higher threshold for more reliable detection
-                minSpeechDurationMs: 200,      // Slightly longer to avoid false positives
-                minSilenceDurationMs: 100,     // Quick silence detection (100ms)
-                speechPadMs: 30                // Minimal padding
+            this.clientVAD = new SileroVADClient({
+                threshold: this.vadConfig.sileroThreshold,
+                minSpeechDurationMs: this.vadConfig.minSpeechMs,
+                minSilenceDurationMs: this.vadConfig.minSilenceMs,
+                sampleRate: 16000,             
+                frameSamples: 1536             
             });
             
             // Set up VAD callbacks for immediate interruption
@@ -115,19 +111,26 @@ class SalesAgentApp {
                     this.handleVADSpeechEnd(speechProb);
                 },
                 onVADUpdate: (speechProb, isSpeaking) => {
-                    // IMMEDIATE INTERRUPTION: Only trigger during AI speech
-                    if (this.isAiSpeaking && isSpeaking && speechProb > 0.6) {
+                    // IMMEDIATE INTERRUPTION: Only trigger during AI speech with high confidence
+                    if (this.isAiSpeaking && isSpeaking && speechProb > this.vadConfig.interruptThreshold) {
                         const currentTime = Date.now();
                         const timeSinceAudioStart = currentTime - (this.lastAudioStartTime || 0);
                         
                         // Prevent interrupting immediately after AI starts speaking (audio feedback protection)
-                        if (timeSinceAudioStart < 500) {  // Reduced to 500ms for faster response
+                        if (timeSinceAudioStart < 1000) {  // Increased to 1 second for better protection
                             console.log(`🔊 Ignoring potential audio feedback (${timeSinceAudioStart}ms after audio start)`);
                             return;
                         }
                         
-                        // Prevent rapid fire interrupts
-                        if (currentTime - this.lastInterruptTime < 1000) {
+                        // Prevent rapid fire interrupts - increased delay
+                        if (currentTime - this.lastInterruptTime < 2000) {  // Increased from 1s to 2s
+                            console.log(`⏰ Ignoring rapid interrupt (${currentTime - this.lastInterruptTime}ms since last)`);
+                            return;
+                        }
+                        
+                        // Additional check: Only interrupt if speech confidence is very high (likely direct conversation)  
+                        if (speechProb < this.vadConfig.interruptThreshold) {
+                            console.log(`🤔 Speech confidence too low for interruption: ${speechProb.toFixed(3)} < ${this.vadConfig.interruptThreshold}`);
                             return;
                         }
                         
@@ -141,7 +144,7 @@ class SalesAgentApp {
                         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                             this.socket.send(JSON.stringify({ 
                                 type: 'interrupt',
-                                source: 'client_vad_immediate',
+                                source: 'silero_vad_immediate',
                                 speechProb: speechProb,
                                 timestamp: currentTime
                             }));
@@ -162,12 +165,32 @@ class SalesAgentApp {
             await this.clientVAD.initialize();
             this.vadEnabled = true;
             
-            console.log('✅ Client-side VAD initialized successfully!');
+            console.log('✅ Silero VAD initialized successfully!');
+            
+            // Configure audio worklet processor with updated thresholds
+            this.updateWorkletVADConfig();
             
         } catch (error) {
-            console.warn('⚠️ Failed to initialize client-side VAD:', error);
+            console.warn('⚠️ Failed to initialize Silero VAD:', error);
             console.log('📶 Falling back to server-side VAD');
             this.vadEnabled = false;
+        }
+    }
+    
+    /**
+     * Update the audio worklet processor with current VAD configuration
+     */
+    updateWorkletVADConfig() {
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.port.postMessage({
+                type: 'vadConfig',
+                data: {
+                    threshold: this.vadConfig.energyThreshold,
+                    minSpeechDurationMs: this.vadConfig.minSpeechMs,
+                    minSilenceDurationMs: this.vadConfig.minSilenceMs
+                }
+            });
+            console.log('🔧 Updated worklet VAD config:', this.vadConfig);
         }
     }
 
@@ -243,17 +266,7 @@ class SalesAgentApp {
             }
         });
         
-        // Script modal event listener with debugging
-        const confirmButton = document.getElementById('confirmScriptButton');
-        if (confirmButton) {
-            confirmButton.addEventListener('click', () => {
-                console.log('🔘 Confirm script button clicked');
-                this.confirmScript();
-            });
-            console.log('✅ Script confirm button event listener added');
-        } else {
-            console.error('❌ Confirm script button not found during setup');
-        }
+
     }
 
     showLogin() {
@@ -305,9 +318,8 @@ class SalesAgentApp {
                 this.currentUser = username;
                 this.isLoggedIn = true;
                 
-                console.log('🔍 DEBUG: About to show script modal');
-                // ⬅️ NEW: SHOW THE SCRIPT MODAL INSTEAD OF DIRECTLY UPDATING UI
-                this.showScriptModal(); 
+                console.log('✅ Login successful - showing main app');
+                this.showMainApp(); 
                 await this.connectWebSocket();
             } else {
                 const error = await response.json();
@@ -342,94 +354,7 @@ class SalesAgentApp {
         }
     }
 
-    // ------------------ Script Persistence Methods ------------------
 
-    loadScriptFromLocalStorage() {
-        const scriptInput = document.getElementById('conversationScript');
-        const savedScript = localStorage.getItem('userConversationScript');
-        
-        if (savedScript && scriptInput) {
-            this.conversationScript = savedScript;
-            scriptInput.value = savedScript; // Pre-populate the modal's textarea
-        } else if (scriptInput) {
-            // Default script if none is saved
-            const defaultScript = "Your primary goal is to schedule a follow-up call. Start with a polite introduction and state the reason for your call clearly. Be professional, friendly, and focus on understanding the customer's trucking needs.";
-            this.conversationScript = defaultScript;
-            scriptInput.value = defaultScript;
-        }
-    }
-
-    saveScriptToLocalStorage(scriptText) {
-        this.conversationScript = scriptText;
-        localStorage.setItem('userConversationScript', scriptText);
-        console.log('✅ Script saved to local storage');
-    }
-    
-    // ------------------ Script Modal Logic ------------------
-
-    // Call this immediately after a successful sign-in
-    showScriptModal() {
-        console.log('🔍 DEBUG: showScriptModal called');
-        
-        // Check if the modal element exists
-        const modal = document.getElementById('scriptModal');
-        const button = document.getElementById('confirmScriptButton');
-        const textarea = document.getElementById('conversationScript');
-        
-        console.log('🔍 Element check in showScriptModal:', {
-            modal: !!modal,
-            button: !!button,
-            textarea: !!textarea,
-            modalClasses: modal ? modal.classList.toString() : 'N/A'
-        });
-        
-        if (!modal) {
-            console.error('❌ Script modal element not found!');
-            // Fallback to show main app directly
-            this.showMainApp();
-            return;
-        }
-        
-        console.log('✅ Script modal element found');
-        
-        // 1. Load the previously saved script
-        this.loadScriptFromLocalStorage(); 
-        
-        // 2. Display the modal
-        modal.classList.remove('hidden');
-        console.log('📝 Script modal displayed, current classes:', modal.classList.toString());
-    }
-
-    // Call this when the user clicks "Confirm & Continue"
-    confirmScript() {
-        const scriptInput = document.getElementById('conversationScript');
-        const newScript = scriptInput.value.trim();
-        
-        if (!newScript) {
-            alert('The conversation script cannot be empty. Please enter instructions.');
-            return;
-        }
-
-        // 1. Save the confirmed script for future sessions
-        this.saveScriptToLocalStorage(newScript); 
-        
-        // 2. Send the script to the backend if WebSocket is connected
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({
-                type: 'set_conversation_script',
-                script: newScript
-            }));
-            console.log('📤 Sent conversation script to backend');
-        }
-        
-        // 3. Hide the modal
-        document.getElementById('scriptModal').classList.add('hidden');
-        
-        // 4. Transition to the main agent UI
-        this.showMainApp(); 
-        
-        console.log('✅ Script confirmed and saved');
-    }
 
     async connectWebSocket() {
         try {
@@ -774,7 +699,7 @@ class SalesAgentApp {
                             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                                 this.socket.send(JSON.stringify({ 
                                     type: 'interrupt',
-                                    source: 'worklet_vad'
+                                    source: 'worklet_vad_fallback'
                                 }));
                             }
                         }
@@ -1609,7 +1534,7 @@ class SalesAgentApp {
         if (this.vadEnabled && this.clientVAD) {
             return {
                 enabled: true,
-                type: 'client-side',
+                type: 'silero-vad',
                 isSpeaking: this.clientVAD.isSpeaking,
                 speechProb: this.clientVAD.currentSpeechProb,
                 timeSinceLastSpeech: this.clientVAD.getTimeSinceLastSpeech()

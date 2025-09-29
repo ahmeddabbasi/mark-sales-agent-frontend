@@ -11,9 +11,9 @@ class Config {
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-                        // Clear old URLs from localStorage to ensure we use the latest config
+            // Clear old URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('80c7390e7c35e6312020b31b05ff2973.serveo.net')) {
+            if (savedUrl && !savedUrl.includes('b3bd2e7430731357af1db0582080b894.serveo.net')) {
                 localStorage.removeItem('backend_url');
                 console.log('Cleared old backend URL from localStorage');
             }
@@ -25,9 +25,9 @@ class Config {
                 this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                // Use the NEW serveo tunnel URL as default
-                this.apiUrl = 'https://80c7390e7c35e6312020b31b05ff2973.serveo.net';
-                this.wsUrl = 'wss://80c7390e7c35e6312020b31b05ff2973.serveo.net';
+                                // Use the NEW serveo tunnel URL as default
+                this.apiUrl = 'https://b3bd2e7430731357af1db0582080b894.serveo.net';
+                this.wsUrl = 'wss://b3bd2e7430731357af1db0582080b894.serveo.net';
                 this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
             }
         }
@@ -48,108 +48,68 @@ class Config {
                     'Content-Type': 'application/json',
                     'ngrok-skip-browser-warning': 'true'
                 },
-                timeout: 5000
+                timeout: 10000
             });
             
             if (response.ok) {
-                const config = await response.json();
-                console.log('Backend config verified:', config);
-                
-                // Update URLs from backend response
-                this.apiUrl = config.backend_url;
-                this.wsUrl = config.websocket_url;
+                console.log('✅ Backend connection verified');
                 this.isConfigured = true;
                 
-                // Save for future use
+                // Cache the working URL
                 localStorage.setItem('backend_url', this.apiUrl);
                 
                 return true;
+            } else {
+                console.error('❌ Backend responded with error:', response.status);
+                return false;
             }
         } catch (error) {
-            console.log('Connection verification failed:', error);
-        }
-        return false;
-    }
-    
-    async ensureConfigured() {
-        // If we're in development or have a hardcoded tunnel URL, skip verification popup
-        if (this.isConfigured) {
-            return true;
-        }
-        
-        // For hardcoded tunnel URLs (ngrok, serveo, loca.lt), skip verification and accept directly
-        if (this.apiUrl.includes('ngrok-free.app') || 
-            this.apiUrl.includes('serveo.net') || 
-            this.apiUrl.includes('loca.lt')) {
-            console.log('Using hardcoded tunnel URL, skipping verification:', this.apiUrl);
-            this.isConfigured = true;
-            return true;
-        }
-        
-        // Always try to verify current config first (no prompting)
-        const verified = await this.verifyConnection();
-        if (verified) {
-            return true;
-        }
-        
-        // If verification failed and we're in production, try a few common patterns silently
-        if (!this.isDevelopment) {
-            const fallbackUrls = [
-                'https://80c7390e7c35e6312020b31b05ff2973.serveo.net', // Current tunnel URL
-                localStorage.getItem('backend_url')
-            ].filter(Boolean);
-            
-            for (const url of fallbackUrls) {
-                this.apiUrl = url;
-                this.wsUrl = url.replace('http', 'ws');
-                
-                const verified = await this.verifyConnection();
-                if (verified) {
-                    return true;
-                }
-            }
-        }
-        
-        // Only prompt as last resort if all automatic attempts fail AND we don't have hardcoded URL
-        if (!this.apiUrl.includes('ngrok-free.app') && 
-            !this.apiUrl.includes('serveo.net') && 
-            !this.apiUrl.includes('loca.lt')) {
-            const userUrl = prompt('Backend connection failed. Please enter your backend URL (e.g., https://abc123.ngrok-free.app):');
-            if (userUrl && userUrl.startsWith('http')) {
-                this.apiUrl = userUrl;
-                this.wsUrl = userUrl.replace('http', 'ws');
-                
-                // Try to verify the user-provided URL
-                const verified = await this.verifyConnection();
-                if (verified) {
-                    return true;
-                } else {
-                    alert('Failed to connect to the provided URL. Please check the URL and try again.');
-                }
-            }
-        }
-        
-        // If we have a hardcoded tunnel URL, just proceed without popup
-        return (this.apiUrl.includes('ngrok-free.app') || 
-                this.apiUrl.includes('serveo.net') || 
-                this.apiUrl.includes('loca.lt'));
-    }
-    
-    // Method to manually set URL (for admin panel)
-    async setBackendUrl(url) {
-        this.apiUrl = url;
-        this.wsUrl = url.replace('http', 'ws');
-        
-        const verified = await this.verifyConnection();
-        if (verified) {
-            alert('Backend URL updated successfully!');
-            return true;
-        } else {
-            alert('Failed to connect to the provided URL. Please check the URL and try again.');
+            console.error('❌ Failed to connect to backend:', error);
             return false;
         }
     }
+    
+    async promptForUrl() {
+        if (this.isDevelopment) {
+            return; // Don't prompt in development
+        }
+        
+        const userUrl = prompt(
+            'Backend connection failed. Please enter the backend URL (e.g., https://your-tunnel.serveo.net):',
+            this.apiUrl
+        );
+        
+        if (userUrl && userUrl.trim()) {
+            this.apiUrl = userUrl.trim();
+            this.wsUrl = this.apiUrl.replace('http', 'ws');
+            
+            // Test the new URL
+            const isWorking = await this.verifyConnection();
+            if (isWorking) {
+                console.log('✅ New backend URL is working');
+                return true;
+            } else {
+                console.log('❌ New backend URL is not working');
+                return false;
+            }
+        }
+        
+        return false;
+    }
+    
+    getApiUrl() {
+        return this.apiUrl;
+    }
+    
+    getWsUrl() {
+        return this.wsUrl;
+    }
 }
 
-// Global config instance
+// Create global config instance
 window.appConfig = new Config();
+
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Config;
+}
