@@ -27,6 +27,10 @@ class SalesAgentApp {
         this.scheduledBuffers = [];
         this.lastVadState = null; // Track VAD state changes
 
+        // False positive detection properties
+        this.userHasSpoken = false;
+        this.falsePositiveTimer = null;
+
         // Client-side VAD for immediate barge-in detection
         this.clientVAD = null;
         this.vadEnabled = false;
@@ -66,10 +70,10 @@ class SalesAgentApp {
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://b3bd2e7430731357af1db0582080b894.serveo.net',
+                : 'https://5f4a960da504f127f4edb488c6ea8eb8.serveo.net',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://b3bd2e7430731357af1db0582080b894.serveo.net'
+                : 'wss://5f4a960da504f127f4edb488c6ea8eb8.serveo.net'
         };
     }
 
@@ -136,6 +140,7 @@ class SalesAgentApp {
                         
                         console.log(`🛑 IMMEDIATE INTERRUPT! Speech prob: ${speechProb.toFixed(3)}, stopping AI...`);
                         this.lastInterruptTime = currentTime;
+                        this.userHasSpoken = false; // Reset user speech flag
                         
                         // STEP 1: Immediately stop audio playback
                         this.stopAudioPlayback();
@@ -148,8 +153,11 @@ class SalesAgentApp {
                                 speechProb: speechProb,
                                 timestamp: currentTime
                             }));
-                            console.log("📤 Sent immediate interrupt signal to server");
                         }
+                        
+                        // STEP 3: Start false positive detection timer
+                        this.startFalsePositiveTimer();
+                        console.log("📤 Sent immediate interrupt signal to server");
                     }
                     
                     // Update VAD status display
@@ -240,11 +248,31 @@ class SalesAgentApp {
     }
 
     /**
-     * Speech resume functionality (simplified)
+     * Speech resume functionality - handles false positive recovery
      */
     requestSpeechResume() {
-        // REMOVED: Auto-resume logic to prevent unwanted speech restart
-        console.log('📤 Speech resume disabled for immediate interrupts');
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            console.log('🔄 Requesting speech resume after false positive');
+            this.ws.send(JSON.stringify({ type: 'resume_speech' }));
+        }
+    }
+
+    /**
+     * Auto-resume after false positive detection
+     */
+    startFalsePositiveTimer() {
+        // Clear any existing timer
+        if (this.falsePositiveTimer) {
+            clearTimeout(this.falsePositiveTimer);
+        }
+        
+        // Set timer to detect false positive
+        this.falsePositiveTimer = setTimeout(() => {
+            if (!this.userHasSpoken && this.lastInterruptWasValid) {
+                console.log('🤖 False positive detected - auto-resuming');
+                this.requestSpeechResume();
+            }
+        }, 2000); // 2 second detection window
     }
 
     handleVADSpeechStart(speechProb) {
@@ -435,6 +463,12 @@ class SalesAgentApp {
         switch (message.type) {
             case 'transcription':
                 this.addMessage('You', message.text, 'user');
+                // Mark that user has actually spoken (not false positive)
+                this.userHasSpoken = true;
+                if (this.falsePositiveTimer) {
+                    clearTimeout(this.falsePositiveTimer);
+                    this.falsePositiveTimer = null;
+                }
                 break;
             case 'simple_greeting':
                 // Handle periodic "hi" greetings - don't add to chat history
