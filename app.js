@@ -70,10 +70,10 @@ class SalesAgentApp {
         this.config = {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://5f4a960da504f127f4edb488c6ea8eb8.serveo.net',
+                : 'https://9184e787ca4abaf98404e34c54ff5a9e.serveo.net',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://5f4a960da504f127f4edb488c6ea8eb8.serveo.net'
+                : 'wss://9184e787ca4abaf98404e34c54ff5a9e.serveo.net'
         };
     }
 
