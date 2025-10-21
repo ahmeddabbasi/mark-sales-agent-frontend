@@ -67,13 +67,14 @@ class SalesAgentApp {
         // Client-side deduplication to prevent race conditions
         this.recentAudioHashes = new Map();
 
-        this.config = {
+        // Use the config.js configuration instead of hardcoded URLs
+        this.config = window.config || {
             apiUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000'
-                : 'https://9184e787ca4abaf98404e34c54ff5a9e.serveo.net',
+                : 'https://voiceagent.rebortai.com',
             wsUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'ws://localhost:8000'
-                : 'wss://9184e787ca4abaf98404e34c54ff5a9e.serveo.net'
+                : 'wss://voiceagent.rebortai.com'
         };
     }
 

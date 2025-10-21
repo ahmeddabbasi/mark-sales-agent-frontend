@@ -120,7 +120,5 @@ class Config {
 // Create global config instance
 window.appConfig = new Config();
 
-// Export for module systems
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Config;
-}
+// Initialize global config
+window.config = new Config();
