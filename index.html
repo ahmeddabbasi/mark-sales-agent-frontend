@@ -5,11 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MARK Sales Agent</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Beautiful Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* Modern Typography System */
+        :root {
+            --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            --font-secondary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', 'Courier New', monospace;
+        }
+        
+        body {
+            font-family: var(--font-secondary);
+            font-feature-settings: 'cv11', 'ss01';
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Beautiful Headers */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-primary);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            line-height: 1.2;
+        }
+        
+        h1 { font-size: 2rem; font-weight: 700; }
+        h2 { font-size: 1.5rem; font-weight: 600; }
+        h3 { font-size: 1.25rem; font-weight: 600; }
+        
+        /* Enhanced Buttons */
+        button {
+            font-family: var(--font-primary);
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Beautiful Labels and Text */
+        label {
+            font-family: var(--font-secondary);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+        
+        /* Elegant Input Fields */
+        input, textarea, select {
+            font-family: var(--font-secondary);
+            font-weight: 400;
+            letter-spacing: 0.01em;
+        }
+        
+        /* Code/Monospace Elements */
+        code, pre, .font-mono {
+            font-family: var(--font-mono);
+            font-feature-settings: 'liga' 0;
+        }
+        
+        /* Enhanced Glass Effect with Better Typography */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Beautiful Text Shadows for Better Readability */
+        .text-shadow-soft {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .text-shadow-medium {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Elegant Brand Title */
+        .brand-title {
+            font-family: var(--font-primary);
+            font-weight: 700;
+            font-size: 2rem;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Refined Animations */
         .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .glass-effect { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
         .pulse-animation { animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         .wave-animation { animation: wave 1.5s ease-in-out infinite; }
@@ -21,13 +111,13 @@
         <div class="glass-effect rounded-2xl p-8 w-full max-w-md">
             <div class="text-center mb-8">
                 <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-white bg-opacity-20 flex items-center justify-center"><i class="fas fa-robot text-3xl text-white"></i></div>
-                <h1 class="text-3xl font-bold text-white mb-2">MARK Sales Agent</h1>
-                <p class="text-white text-opacity-80">AI-Powered Truck Dispatcher</p>
+                <h1 class="brand-title text-shadow-medium mb-2">MARK Sales Agent</h1>
+                <p class="text-white text-opacity-90 text-shadow-soft font-medium tracking-wide">AI-Powered Truck Dispatcher</p>
             </div>
             <form id="loginForm" class="space-y-6">
-                <div><label class="block text-white text-sm font-medium mb-2">Username</label><input type="text" id="username" required class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"></div>
-                <div><label class="block text-white text-sm font-medium mb-2">Password</label><input type="password" id="password" required class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"></div>
-                <button type="submit" class="w-full py-3 rounded-lg bg-white bg-opacity-20 text-white font-medium hover:bg-opacity-30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">Sign In</button>
+                <div><label class="block text-white text-sm font-medium mb-2 text-shadow-soft tracking-wide">Username</label><input type="text" id="username" required class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"></div>
+                <div><label class="block text-white text-sm font-medium mb-2 text-shadow-soft tracking-wide">Password</label><input type="password" id="password" required class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"></div>
+                <button type="submit" class="w-full py-3 rounded-lg bg-white bg-opacity-20 text-white font-semibold hover:bg-opacity-30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 text-shadow-soft tracking-wide">Sign In</button>
             </form>
             <div id="loginError" class="mt-4 text-red-300 text-sm text-center hidden"></div>
         </div>
@@ -37,7 +127,7 @@
             <div class="max-w-6xl mx-auto flex justify-between items-center">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center"><i class="fas fa-robot text-white"></i></div>
-                    <h1 class="text-xl font-bold text-white">MARK Sales Agent</h1>
+                    <h1 class="text-xl font-bold text-white text-shadow-soft">MARK Sales Agent</h1>
                 </div>
                 <div class="flex items-center space-x-4">
                     <div id="connectionStatus" class="flex items-center space-x-2"><div class="w-3 h-3 rounded-full bg-green-400"></div><span class="text-white text-sm">Connected</span></div>
@@ -49,16 +139,16 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2">
                     <div class="glass-effect rounded-2xl p-6 h-96 mb-6">
-                        <h2 class="text-xl font-semibold text-white mb-4">Conversation</h2>
+                        <h2 class="text-xl font-semibold text-white mb-4 text-shadow-soft tracking-wide">Conversation</h2>
                         <div id="conversationArea" class="h-64 overflow-y-auto space-y-3"></div>
                         <div class="mt-4 flex justify-center">
-                            <button id="micBtn" class="px-6 py-3 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors text-white font-medium space-x-2">
+                            <button id="micBtn" class="px-6 py-3 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors text-white font-semibold space-x-2 text-shadow-soft tracking-wide">
                                 <i class="fas fa-phone text-white"></i><span>Start Call</span>
                             </button>
                         </div>
                     </div>
                     <div class="glass-effect rounded-2xl p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Audio Level</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4 text-shadow-soft tracking-wide">Audio Level</h3>
                         <div class="flex items-center justify-center space-x-1 h-16">
                             <div class="w-2 bg-green-400 rounded-full wave-animation" style="height: 20px; animation-delay: 0s;"></div>
                             <div class="w-2 bg-green-400 rounded-full wave-animation" style="height: 40px; animation-delay: 0.1s;"></div>
@@ -70,35 +160,36 @@
                 </div>
                 <div class="space-y-6">
                     <div class="glass-effect rounded-2xl p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Call Status</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4 text-shadow-soft tracking-wide">Call Status</h3>
                         <div class="space-y-3">
-                            <div class="flex justify-between items-center"><span class="text-white text-opacity-80">Duration</span><span id="callDuration" class="text-white font-medium">00:00</span></div>
-                            <div class="flex justify-between items-center"><span class="text-white text-opacity-80">Status</span><span id="callStatus" class="text-green-400 font-medium">Active</span></div>
+                            <div class="flex justify-between items-center"><span class="text-white text-opacity-80 font-light tracking-wide">Customer</span><span id="currentCustomer" class="text-gray-400 font-medium">Press Start Call</span></div>
+                            <div class="flex justify-between items-center"><span class="text-white text-opacity-80 font-light tracking-wide">Duration</span><span id="callDuration" class="text-white font-medium">00:00</span></div>
+                            <div class="flex justify-between items-center"><span class="text-white text-opacity-80 font-light tracking-wide">Status</span><span id="callStatus" class="text-green-400 font-medium">Ready</span></div>
                         </div>
                     </div>
                     <div class="glass-effect rounded-2xl p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Lead Information</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4 text-shadow-soft tracking-wide">Lead Information</h3>
                         <div class="space-y-3">
-                            <div class="flex items-center space-x-2"><i class="fas fa-user text-white text-opacity-60"></i><span id="nameStatus" class="text-white text-opacity-80">Name: Not collected</span></div>
-                            <div class="flex items-center space-x-2"><i class="fas fa-envelope text-white text-opacity-60"></i><span id="emailStatus" class="text-white text-opacity-80">Email: Not collected</span></div>
-                            <div class="flex items-center space-x-2"><i class="fas fa-heart text-white text-opacity-60"></i><span id="interestStatus" class="text-white text-opacity-80">Interest: Not detected</span></div>
+                            <div class="flex items-center space-x-2"><i class="fas fa-user text-white text-opacity-60"></i><span id="nameStatus" class="text-white text-opacity-80 font-light tracking-wide">Name: Not collected</span></div>
+                            <div class="flex items-center space-x-2"><i class="fas fa-envelope text-white text-opacity-60"></i><span id="emailStatus" class="text-white text-opacity-80 font-light tracking-wide">Email: Not collected</span></div>
+                            <div class="flex items-center space-x-2"><i class="fas fa-heart text-white text-opacity-60"></i><span id="interestStatus" class="text-white text-opacity-80 font-light tracking-wide">Interest: Not detected</span></div>
                         </div>
                     </div>
                     <div class="glass-effect rounded-2xl p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Voice Activity</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4 text-shadow-soft tracking-wide">Voice Activity</h3>
                         <div class="flex items-center space-x-2">
                             <div id="vadIndicator" class="inline-block w-3 h-3 bg-gray-400 rounded-full"></div>
-                            <span id="vadText" class="text-gray-500">VAD Initializing...</span>
+                            <span id="vadText" class="text-gray-500 font-light tracking-wide">VAD Initializing...</span>
                         </div>
-                        <div class="mt-2 text-xs text-white text-opacity-60">
+                        <div class="mt-2 text-xs text-white text-opacity-60 font-light tracking-wide">
                             Powered by Silero VAD
                         </div>
                     </div>
                     <div class="glass-effect rounded-2xl p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Actions</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4 text-shadow-soft tracking-wide">Actions</h3>
                         <div class="space-y-3">
-                            <button id="endCallBtn" class="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">End Call</button>
-                            <button id="muteBtn" class="w-full py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors">Mute</button>
+                            <button id="endCallBtn" class="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-semibold text-shadow-soft tracking-wide">End Call</button>
+                            <button id="muteBtn" class="w-full py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold text-shadow-soft tracking-wide">Mute</button>
                         </div>
                     </div>
                 </div>
@@ -108,20 +199,46 @@
     
 
     
-    <div id="endCallModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="glass-effect rounded-2xl p-6 w-full max-w-md">
-            <h3 class="text-xl font-semibold text-white mb-4">End Call</h3>
+        <!-- End Call Modal with Call Summary -->
+    <div id="endCallModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="glass-effect rounded-2xl p-6 w-full max-w-lg">
+            <h3 class="text-xl font-semibold text-white mb-4 text-shadow-soft tracking-wide">End Call & Summary</h3>
+            
+            <!-- Customer Index Number -->
             <div class="mb-4" style="border: 2px solid #ffffff30; padding: 10px; border-radius: 8px;">
-                <label class="block text-white text-sm font-medium mb-2" style="color: #fbbf24;">⭐ Customer Index Number * (Required)</label>
+                <label class="block text-white text-sm font-medium mb-2 text-shadow-soft tracking-wide" style="color: #fbbf24;">⭐ Customer Index Number * (Required)</label>
                 <input type="number" id="customerIndex" name="customerIndex" min="1" required style="background: rgba(255,255,255,0.3) !important;" class="w-full px-3 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50" placeholder="Enter customer row number from sheet (e.g., 1, 2, 3...)">
             </div>
+            
+            <!-- Call Summary Dropdown -->
             <div class="mb-4">
-                <label class="block text-white text-sm font-medium mb-2">Agent Feedback</label>
-                <textarea id="callFeedback" rows="4" class="w-full px-3 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50" placeholder="Enter your feedback about this call..."></textarea>
+                <label class="block text-white text-sm font-medium mb-2 text-shadow-soft tracking-wide">Call Summary *</label>
+                <select id="callSummarySelect" required class="w-full px-3 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50" style="background: rgba(255,255,255,0.2) !important;">
+                    <option value="" style="background: #4a5568; color: white;">Select call outcome...</option>
+                    <option value="Not Picked" style="background: #4a5568; color: white;">Not Picked</option>
+                    <option value="Declined" style="background: #4a5568; color: white;">Declined</option>
+                    <option value="Wrong Number" style="background: #4a5568; color: white;">Wrong Number</option>
+                    <option value="Agent Not Responded" style="background: #4a5568; color: white;">Agent Not Responded</option>
+                    <option value="Manually Enter" style="background: #4a5568; color: white;">Manually Enter</option>
+                </select>
             </div>
+            
+            <!-- Manual Entry Textarea (hidden by default) -->
+            <div id="manualEntrySection" class="mb-4 hidden">
+                <label class="block text-white text-sm font-medium mb-2 text-shadow-soft tracking-wide">Manual Summary Entry</label>
+                <textarea id="manualSummaryText" rows="3" class="w-full px-3 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50" placeholder="Enter your custom call summary..."></textarea>
+            </div>
+            
+
+            
+            <!-- Action Buttons -->
             <div class="flex space-x-3">
-                <button id="confirmEndCall" class="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">End Call</button>
-                <button id="cancelEndCall" class="flex-1 py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancel</button>
+                <button id="confirmEndCall" class="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-semibold text-shadow-soft tracking-wide">
+                    <i class="fas fa-phone-slash mr-2"></i>End Call
+                </button>
+                <button id="cancelEndCall" class="flex-1 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold text-shadow-soft tracking-wide">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
             </div>
         </div>
     </div>

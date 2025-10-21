@@ -11,24 +11,24 @@ class Config {
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-            // Clear old URLs from localStorage to ensure we use the latest config
+            // Clear old serveo/ngrok URLs from localStorage to ensure we use the latest config
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && !savedUrl.includes('9184e787ca4abaf98404e34c54ff5a9e.serveo.net')) {
+            if (savedUrl && (savedUrl.includes('serveo.net') || savedUrl.includes('ngrok'))) {
                 localStorage.removeItem('backend_url');
-                console.log('Cleared old backend URL from localStorage');
+                console.log('Cleared old tunnel backend URL from localStorage');
             }
-            
-            // In production, try to get from localStorage first, then use default
+
+            // In production, try to get from localStorage first, then use default Cloudflare subdomain
             const currentSavedUrl = localStorage.getItem('backend_url');
             if (currentSavedUrl) {
                 this.apiUrl = currentSavedUrl;
                 this.wsUrl = currentSavedUrl.replace('http', 'ws');
                 this.isConfigured = false; // Still need to verify
             } else {
-                                // Use the NEW serveo tunnel URL as default
-                this.apiUrl = 'https://9184e787ca4abaf98404e34c54ff5a9e.serveo.net';
-                this.wsUrl = 'wss://9184e787ca4abaf98404e34c54ff5a9e.serveo.net';
-                this.isConfigured = true; // Auto-configured with hardcoded tunnel URL
+                // Use the Cloudflare subdomain as default backend URL
+                this.apiUrl = 'https://voiceagent.rebortai.com';
+                this.wsUrl = 'wss://voiceagent.rebortai.com';
+                this.isConfigured = true; // Auto-configured with production URL
             }
         }
         

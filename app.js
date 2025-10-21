@@ -373,6 +373,9 @@ class SalesAgentApp {
         document.getElementById('confirmEndCall').addEventListener('click', () => { this.endCall(); });
         document.getElementById('cancelEndCall').addEventListener('click', () => { this.hideEndCallModal(); });
         
+        // Handle call summary dropdown changes
+        document.getElementById('callSummarySelect').addEventListener('change', (e) => { this.handleSummaryChange(e); });
+        
         const userElement = document.getElementById('currentUser');
         if (userElement) { 
             userElement.textContent = this.currentUser; 
@@ -461,6 +464,10 @@ class SalesAgentApp {
         const message = JSON.parse(event.data);
 
         switch (message.type) {
+            case 'connection_ready':
+                console.log('✅ WebSocket connection ready:', message.message);
+                this.updateCallStatus('Ready to start calls', 'waiting');
+                break;
             case 'transcription':
                 this.addMessage('You', message.text, 'user');
                 // Mark that user has actually spoken (not false positive)
@@ -612,6 +619,16 @@ class SalesAgentApp {
                 break;
             case 'script_updated':
                 console.log('✅ Conversation script updated on backend:', message.message);
+                break;
+            case 'calling_index_assigned':
+                console.log('✅ Calling index assigned:', message.index);
+                this.currentCustomerIndex = message.index;
+                this.updateCallStatus(`📞 Calling Customer #${message.index}`, 'calling');
+                break;
+            case 'no_calling_index':
+                console.log('⚠️ No calling index found');
+                this.updateCallStatus('❌ No customer with "calling" status found', 'error');
+                this.addMessage('System', message.message, 'system');
                 break;
             case 'call_ended':
                 this.addMessage('System', `Call ended: ${message.message}`, 'system');
@@ -767,6 +784,14 @@ class SalesAgentApp {
             this.isCallActive = true;
             this.isRecording = true;
             this.updateMicButton();
+            
+            // Send start_call message to backend to find calling customer
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                console.log('📞 Sending start_call message to find calling customer');
+                this.socket.send(JSON.stringify({ 
+                    type: 'start_call'
+                }));
+            }
             
             console.log('Call started successfully');
         } catch (error) {
@@ -1275,21 +1300,71 @@ class SalesAgentApp {
 
     showEndCallModal() {
         document.getElementById('endCallModal').classList.remove('hidden');
+        // Reset form when showing modal
+        document.getElementById('callSummarySelect').value = '';
+        document.getElementById('manualEntrySection').classList.add('hidden');
+        document.getElementById('manualSummaryText').value = '';
+        
+        // Auto-populate customer index if available from automatic assignment
+        const customerIndexField = document.getElementById('customerIndex');
+        if (this.currentCustomerIndex) {
+            customerIndexField.value = this.currentCustomerIndex;
+            customerIndexField.readOnly = true;  // Make it read-only since it's auto-assigned
+            customerIndexField.style.backgroundColor = 'rgba(76, 175, 80, 0.3)'; // Green tint to show auto-assigned
+            customerIndexField.style.border = '2px solid #4caf50'; // Green border
+        } else {
+            customerIndexField.value = '';
+            customerIndexField.readOnly = false;
+            customerIndexField.style.backgroundColor = 'rgba(255,255,255,0.3)';
+            customerIndexField.style.border = '1px solid rgba(255,255,255,0.3)';
+        }
     }
 
     hideEndCallModal() {
         document.getElementById('endCallModal').classList.add('hidden');
     }
 
+    handleSummaryChange(event) {
+        const selectedValue = event.target.value;
+        const manualEntrySection = document.getElementById('manualEntrySection');
+        
+        if (selectedValue === 'Manually Enter') {
+            manualEntrySection.classList.remove('hidden');
+        } else {
+            manualEntrySection.classList.add('hidden');
+            document.getElementById('manualSummaryText').value = '';
+        }
+    }
+
     async endCall() {
-        this.hideEndCallModal();
-        
         const customerIndex = document.getElementById('customerIndex').value;
-        const callFeedback = document.getElementById('callFeedback').value;
+        const summarySelect = document.getElementById('callSummarySelect').value;
+        const manualSummary = document.getElementById('manualSummaryText').value;
         
+        // Validation
         if (!customerIndex) {
             this.showError('Customer Index Number is required');
             return;
+        }
+        
+        if (!summarySelect) {
+            this.showError('Call Summary is required');
+            return;
+        }
+        
+        if (summarySelect === 'Manually Enter' && !manualSummary.trim()) {
+            this.showError('Manual summary text is required when "Manually Enter" is selected');
+            return;
+        }
+        
+        this.hideEndCallModal();
+        
+        // Determine final feedback text from summary selection only
+        let finalFeedback = '';
+        if (summarySelect === 'Manually Enter') {
+            finalFeedback = manualSummary.trim();
+        } else {
+            finalFeedback = summarySelect;
         }
         
         try {
@@ -1305,7 +1380,7 @@ class SalesAgentApp {
                 body: JSON.stringify({
                     session_id: this.sessionId,
                     customer_index: parseInt(customerIndex), // Now using 1-based index directly 
-                    agent_feedback: callFeedback || ''
+                    agent_feedback: finalFeedback
                 })
             });
             
@@ -1581,6 +1656,39 @@ class SalesAgentApp {
                 speechProb: 0,
                 timeSinceLastSpeech: 0
             };
+        }
+    }
+
+    updateCallStatus(message, statusType = 'info') {
+        const currentCustomerElement = document.getElementById('currentCustomer');
+        const callStatusElement = document.getElementById('callStatus');
+        
+        if (currentCustomerElement) {
+            currentCustomerElement.textContent = message;
+            
+            // Update colors based on status type
+            currentCustomerElement.className = 'font-medium';
+            switch(statusType) {
+                case 'calling':
+                    currentCustomerElement.classList.add('text-green-400');
+                    break;
+                case 'error':
+                    currentCustomerElement.classList.add('text-red-400');
+                    break;
+                case 'waiting':
+                    currentCustomerElement.classList.add('text-yellow-400');
+                    break;
+                default:
+                    currentCustomerElement.classList.add('text-white');
+            }
+        }
+        
+        if (callStatusElement && statusType === 'calling') {
+            callStatusElement.textContent = 'Ready to call';
+            callStatusElement.className = 'text-green-400 font-medium';
+        } else if (callStatusElement && statusType === 'error') {
+            callStatusElement.textContent = 'Setup error';
+            callStatusElement.className = 'text-red-400 font-medium';
         }
     }
 }
