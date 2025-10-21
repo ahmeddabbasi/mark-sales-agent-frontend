@@ -11,25 +11,22 @@ class Config {
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-            // Clear old serveo/ngrok URLs from localStorage to ensure we use the latest config
+            // Clear any old tunnel URLs (serveo, ngrok, etc.) from localStorage
             const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && (savedUrl.includes('serveo.net') || savedUrl.includes('ngrok'))) {
+            if (savedUrl && (savedUrl.includes('serveo.net') || 
+                           savedUrl.includes('ngrok') || 
+                           savedUrl.includes('tunnel') ||
+                           savedUrl.includes('localtunnel'))) {
                 localStorage.removeItem('backend_url');
-                console.log('Cleared old tunnel backend URL from localStorage');
+                console.log('Cleared old tunnel backend URL from localStorage:', savedUrl);
             }
 
-            // In production, try to get from localStorage first, then use default Cloudflare subdomain
-            const currentSavedUrl = localStorage.getItem('backend_url');
-            if (currentSavedUrl) {
-                this.apiUrl = currentSavedUrl;
-                this.wsUrl = currentSavedUrl.replace('http', 'ws');
-                this.isConfigured = false; // Still need to verify
-            } else {
-                // Use the Cloudflare subdomain as default backend URL
-                this.apiUrl = 'https://voiceagent.rebortai.com';
-                this.wsUrl = 'wss://voiceagent.rebortai.com';
-                this.isConfigured = true; // Auto-configured with production URL
-            }
+            // In production, always use the Cloudflare tunnel URL
+            this.apiUrl = 'https://voiceagent.rebortai.com';
+            this.wsUrl = 'wss://voiceagent.rebortai.com';
+            this.isConfigured = true; // Auto-configured with production URL
+            
+            console.log('Production mode: Using Cloudflare tunnel URL');
         }
         
         console.log('Config initialized:', {
