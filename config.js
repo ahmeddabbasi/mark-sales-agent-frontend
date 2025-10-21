@@ -5,22 +5,15 @@ class Config {
         this.isDevelopment = window.location.hostname === 'localhost' || 
                             window.location.hostname === '127.0.0.1';
         
+        // Force clear any old backend URLs from cache
+        this.clearOldBackendUrls();
+        
         // Default URLs
         if (this.isDevelopment) {
             this.apiUrl = 'http://localhost:8000';
             this.wsUrl = 'ws://localhost:8000';
             this.isConfigured = true;
         } else {
-            // Clear any old tunnel URLs (serveo, ngrok, etc.) from localStorage
-            const savedUrl = localStorage.getItem('backend_url');
-            if (savedUrl && (savedUrl.includes('serveo.net') || 
-                           savedUrl.includes('ngrok') || 
-                           savedUrl.includes('tunnel') ||
-                           savedUrl.includes('localtunnel'))) {
-                localStorage.removeItem('backend_url');
-                console.log('Cleared old tunnel backend URL from localStorage:', savedUrl);
-            }
-
             // In production, always use the Cloudflare tunnel URL
             this.apiUrl = 'https://voiceagent.rebortai.com';
             this.wsUrl = 'wss://voiceagent.rebortai.com';
@@ -35,6 +28,27 @@ class Config {
             wsUrl: this.wsUrl,
             isConfigured: this.isConfigured
         });
+    }
+    
+    clearOldBackendUrls() {
+        // Clear any old tunnel URLs and cached data
+        const keysToCheck = ['backend_url', 'api_url', 'websocket_url', 'config_cache'];
+        keysToCheck.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value && (value.includes('serveo.net') || 
+                         value.includes('ngrok') || 
+                         value.includes('tunnel') ||
+                         value.includes('localtunnel'))) {
+                localStorage.removeItem(key);
+                console.log('Cleared old backend URL from localStorage:', key, value);
+            }
+        });
+        
+        // Force clear all potentially cached URLs
+        localStorage.removeItem('backend_url');
+        localStorage.removeItem('api_url');
+        localStorage.removeItem('websocket_url');
+        console.log('Cleared all cached backend URLs');
     }
     
     async verifyConnection() {
