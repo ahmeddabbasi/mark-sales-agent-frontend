@@ -565,12 +565,42 @@ class SalesAgentApp {
                 }
                 break;
             case 'stop_audio':
-                console.log('🛑 Server signaled to stop audio. Halting playback.');
-                this.stopAudioPlayback();
+                console.log('🛑 Server signaled to stop audio. Halting playback.', {
+                    immediate: message.immediate,
+                    force_stop: message.force_stop,
+                    force: message.force,
+                    priority: message.priority
+                });
+                
+                // Enhanced stop with priority handling
+                if (message.immediate || message.force_stop || message.force) {
+                    this.stopAudioPlaybackImmediate();
+                } else {
+                    this.stopAudioPlayback();
+                }
                 break;
             case 'clear_audio_buffers':
-                console.log('🧹 Server signaled to clear all audio buffers. Deep cleaning...');
-                this.clearAllAudioBuffers();
+                console.log('🧹 Server signaled to clear all audio buffers. Deep cleaning...', {
+                    force: message.force
+                });
+                
+                // Enhanced clearing with force option
+                if (message.force) {
+                    this.clearAllAudioBuffersForced();
+                } else {
+                    this.clearAllAudioBuffers();
+                }
+                break;
+            case 'audio_interrupt':
+                console.log('⚡ Server audio interrupt signal received', {
+                    clear_all: message.clear_all
+                });
+                
+                // Immediate interrupt with optional complete clear
+                this.stopAudioPlaybackImmediate();
+                if (message.clear_all) {
+                    this.clearAllAudioBuffersForced();
+                }
                 break;
             case 'session_refreshed':
                 console.log('Session refreshed:', message.message);
@@ -1139,66 +1169,148 @@ class SalesAgentApp {
     }
 
     stopAudioPlayback() {
-        console.log('🛑 IMMEDIATE STOP: Halting all audio playback');
+        console.log('🛑 STOP: Halting audio playback');
         
-        // 1. IMMEDIATE STATE RESET - Do this first for fastest response
+        // Standard audio stopping
         this.audioQueue = [];
         this.isAudioPlaying = false;
         this.isAiSpeaking = false;
         
-        // 2. STOP WEB AUDIO API SOURCES - Most critical for immediate stopping
+        // Stop Web Audio API sources
         if (this.webAudioContext && this.scheduledBuffers.length > 0) {
             this.scheduledBuffers.forEach(source => {
                 try {
-                    // Stop immediately with no fade out
                     source.stop(0);
                 } catch (e) {
                     // Source may have already stopped, ignore error
                 }
             });
             this.scheduledBuffers = [];
-            console.log('⚡ Web Audio sources stopped immediately');
         }
         
-        // 3. STOP ALL HTML AUDIO ELEMENTS - Fallback audio
+        // Stop HTML audio elements
         const audioElements = document.querySelectorAll('audio');
         audioElements.forEach(audio => {
             try {
                 audio.pause();
                 audio.currentTime = 0;
-                audio.volume = 0; // Mute immediately for instant silence
             } catch (e) {
                 // Ignore errors
             }
         });
         
-        // 4. CLEAR CURRENT AUDIO TIME SCHEDULING
+        // Clear current audio scheduling
         if (this.webAudioContext) {
             this.currentAudioTime = this.webAudioContext.currentTime;
         }
         
-        console.log('✅ All audio playback stopped immediately');
+        console.log('✅ Audio playback stopped');
+    }
+
+    stopAudioPlaybackImmediate() {
+        console.log('⚡ IMMEDIATE STOP: Emergency audio halt with maximum priority');
+        
+        // 1. INSTANT STATE RESET - Highest priority for instant response
+        this.audioQueue = [];
+        this.isAudioPlaying = false;
+        this.isAiSpeaking = false;
+        
+        // 2. AGGRESSIVE WEB AUDIO STOPPING
+        if (this.webAudioContext) {
+            // Stop all scheduled sources immediately
+            this.scheduledBuffers.forEach(source => {
+                try {
+                    source.stop(0);
+                    source.disconnect(); // Disconnect from destination immediately
+                } catch (e) {
+                    // Source may have already stopped, ignore error
+                }
+            });
+            this.scheduledBuffers = [];
+            
+            // Reset audio time to current for clean slate
+            this.currentAudioTime = this.webAudioContext.currentTime;
+        }
+        
+        // 3. AGGRESSIVE HTML AUDIO STOPPING
+        const audioElements = document.querySelectorAll('audio');
+        audioElements.forEach(audio => {
+            try {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0; // Instant mute for zero-latency silence
+                audio.src = ''; // Clear source to prevent any buffered audio
+            } catch (e) {
+                // Ignore errors
+            }
+        });
+        
+        // 4. CLEAR ANY PENDING AUDIO PROCESSING
+        if (this.audioProcessingQueue) {
+            this.audioProcessingQueue = [];
+        }
+        
+        console.log('⚡ Emergency audio stop completed - All audio halted immediately');
     }
 
     clearAllAudioBuffers() {
-        console.log('🧹 DEEP CLEAN: Clearing all audio buffers and state');
+        console.log('🧹 CLEAN: Clearing all audio buffers and state');
         
         // First, stop any current playback
         this.stopAudioPlayback();
         
-        // Clear all audio queues and buffers more thoroughly
+        // Clear all audio queues and buffers
         this.audioQueue = [];
         this.isAudioPlaying = false;
         this.isAiSpeaking = false;
         this.currentAiResponseDiv = null;
         
-        // Clear Web Audio scheduling completely
+        // Clear Web Audio scheduling
         if (this.webAudioContext) {
             this.scheduledBuffers = [];
             this.currentAudioTime = this.webAudioContext.currentTime;
         }
+    }
+
+    clearAllAudioBuffersForced() {
+        console.log('🗯️ FORCED DEEP CLEAN: Emergency clearing of ALL audio state');
         
-        // Remove any orphaned audio elements from the DOM
+        // 1. IMMEDIATE emergency stop first
+        this.stopAudioPlaybackImmediate();
+        
+        // 2. AGGRESSIVE BUFFER CLEARING
+        this.audioQueue = [];
+        this.isAudioPlaying = false;
+        this.isAiSpeaking = false;
+        this.currentAiResponseDiv = null;
+        
+        // 3. COMPLETE WEB AUDIO RESET
+        if (this.webAudioContext) {
+            try {
+                // Clear all scheduled buffers with disconnect
+                this.scheduledBuffers.forEach(source => {
+                    try {
+                        source.stop(0);
+                        source.disconnect();
+                    } catch (e) {
+                        // Ignore disconnect errors
+                    }
+                });
+                this.scheduledBuffers = [];
+                
+                // Reset audio time
+                this.currentAudioTime = this.webAudioContext.currentTime;
+                
+                // Clear any pending audio processing
+                if (this.audioProcessingQueue) {
+                    this.audioProcessingQueue = [];
+                }
+            } catch (e) {
+                console.warn('Error during forced audio context cleanup:', e);
+            }
+        }
+        
+        // 4. REMOVE ALL AUDIO ELEMENTS
         const audioElements = document.querySelectorAll('audio');
         audioElements.forEach(audio => {
             try {
@@ -1206,16 +1318,16 @@ class SalesAgentApp {
                 audio.currentTime = 0;
                 audio.volume = 0;
                 audio.src = '';
-                audio.load(); // Force reload to clear buffer
+                // Remove from DOM if dynamically created
+                if (audio.parentNode && audio.dataset.dynamicAudio) {
+                    audio.parentNode.removeChild(audio);
+                }
             } catch (e) {
-                // Ignore errors
+                // Ignore cleanup errors
             }
         });
         
-        // Clear any pending timeouts or intervals related to audio
-        // (This would be useful if we had any setTimeout/setInterval for audio)
-        
-        console.log('✅ Deep audio buffer cleaning completed');
+        console.log('🗯️ Forced audio cleanup completed - Complete audio state reset');
     }
 
     updateVadStatus(speechDetected, timestamp) {
