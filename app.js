@@ -1810,4 +1810,4 @@ class SalesAgentApp {
 document.addEventListener('DOMContentLoaded', () => {
     const app = new SalesAgentApp();
     app.init();
-});
+});// Updated و 17:46:51 PKT ت 29 اکتوبر 2025
