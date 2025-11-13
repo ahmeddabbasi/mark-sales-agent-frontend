@@ -198,6 +198,30 @@
     </div>
     
 
+    <!-- Call Ended Modal - Shows while session is refreshing -->
+    <div id="callEndedModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-md text-center">
+            <div class="mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 bg-blue-500 bg-opacity-20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-phone-slash text-3xl text-blue-400"></i>
+                </div>
+                <h3 class="text-2xl font-semibold text-white mb-2 text-shadow-soft">Call Ended</h3>
+                <p class="text-white text-opacity-80 text-shadow-soft">Preparing next session...</p>
+            </div>
+            
+            <!-- Loading animation -->
+            <div class="flex justify-center items-center space-x-2 mb-4">
+                <div class="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                <div class="w-3 h-3 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                <div class="w-3 h-3 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+            </div>
+            
+            <p class="text-sm text-white text-opacity-60 text-shadow-soft">
+                Refreshing session and preparing for next customer...
+            </p>
+        </div>
+    </div>
+
     
         <!-- End Call Modal with Call Summary -->
     <div id="endCallModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -251,4 +275,4 @@
     <!-- Main application -->
     <script src="app.js?v=5.0&timestamp=1724620950"></script>
 </body>
-</html><- The currentCustomer element should only show the customer Updated و 17:46:57 PKT ت 29 اکتوبر 2025 -->
+</html>
